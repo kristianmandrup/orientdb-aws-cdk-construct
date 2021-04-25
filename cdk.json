@@ -1,0 +1,27 @@
+{
+  "app": "python3 app.py",
+  "versionReporting": false,
+  "requireApproval": "never",
+  "context": {
+    "owner": "Kristian Mandrup",
+    "github_repo_url": "https://github.com/kristianmandrup/orientdb-aws-cdk-construct",
+    "github_profile": "https://github.com/kristianmandrup",
+    "envs": {
+      "dev": {
+        "region": "us-east-1",
+        "account": "830058508584"
+      },
+      "prod": {
+        "region": "us-east-1",
+        "account": "830058508584",
+        "encryption": true,
+        "kms_arn": "",
+        "vpc_configs": {
+          "vpc_cidr": "10.83.0.0/20",
+          "cidr_mask": 24,
+          "set_reserve": false
+        }
+      }
+    }
+  }
+}
