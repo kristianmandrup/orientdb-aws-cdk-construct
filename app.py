@@ -2,7 +2,7 @@
 
 from aws_cdk import core
 
-from advanced_use_cases.serverless_containers_architecture_with_fargate import ServerlessContainersArchitectureWithFargateStack
+from py_constructs.orientdb_fargate import OrientDbOnFargateStack
 import os
 
 app = core.App()
@@ -13,7 +13,7 @@ region = os.environ['AWS_REGION']  # such as us-east-1
 env_prod = core.Environment(account=account, region=region)
 
 # Create highly available load balanced serverless containerized microservices with Fargate
-orientdb_fargate = OrientDBOnFargateStack(
+orientdb_fargate = OrientDbOnFargateStack(
     app,
     "orientdb_fargate",
     description="OrientDB on Fargate"

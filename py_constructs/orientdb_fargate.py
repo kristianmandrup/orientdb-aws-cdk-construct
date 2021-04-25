@@ -13,15 +13,15 @@ class OrientDbOnFargateStack(core.Stack):
         # Create VPC for hosting the micro service
         vpc = _ec2.Vpc(
             self,
-            "microServiceVpc",
+            "dbVpc",
             max_azs=2,
             nat_gateways=1
         )
 
         # Create Fargate Cluster inside the VPC
-        micro_service_cluster = _ecs.Cluster(
+        db_cluster = _ecs.Cluster(
             self,
-            "microServiceCluster",
+            "dbCluster",
             vpc=vpc
         )
 
@@ -29,7 +29,7 @@ class OrientDbOnFargateStack(core.Stack):
         serverless_orientDB = _ecs_patterns.ApplicationLoadBalancedFargateService(
             self,
             "orientDB",
-            cluster=micro_service_cluster,
+            cluster=db_cluster,
             memory_limit_mib=1024,
             cpu=512,
             task_image_options={
@@ -38,16 +38,16 @@ class OrientDbOnFargateStack(core.Stack):
                     "ENVIRONMENT": env
                 }
             },
-            desired_count=1
+            desired_count=2
         )
 
         # Server Health Checks
         serverless_web_service.target_group.configure_health_check(path="/")
 
-        # Output Web Service Url
+        # Output DB Url
         output_1 = core.CfnOutput(
             self,
-            "webServiceUrl",
+            "dbUrl",
             value=f"{serverless_orientDB.load_balancer.load_balancer_dns_name}",
             description="Access the OrientDB url from your browser"
         )
