@@ -4,12 +4,12 @@ Install OrientDB on AWS Fargate via AWS CDK (Cloud Development Kit)
 
 1. ## 🧰 Prerequisites
 
-   - 🛠 AWS CLI Installed & Configured - [Get help here](https://youtu.be/TPyyfmQte0U)
-   - 🛠 AWS CDK Installed & Configured - [Get help here](https://www.youtube.com/watch?v=MKwxpszw0Rc)
-   - 🛠 Python Packages, _Change the below commands to suit your operating system, the following are written for \_Amazon Linux 2_
-     - Python3 - `yum install -y python3`
-     - Python Pip - `yum install -y python-pip`
-     - Virtualenv - `pip3 install virtualenv`
+- 🛠 AWS CLI Installed & Configured - [Get help here](https://youtu.be/TPyyfmQte0U)
+- 🛠 AWS CDK Installed & Configured - [Get help here](https://www.youtube.com/watch?v=MKwxpszw0Rc)
+- 🛠 Python Packages, _Change the below commands to suit your operating system, the following are written for \_Amazon Linux 2_
+  - Python3 - `yum install -y python3`
+  - Python Pip - `yum install -y python-pip`
+  - Virtualenv - `pip3 install virtualenv`
 
 1. ## ⚙️ Setting up the environment
 
@@ -53,13 +53,96 @@ cdk deploy
 
 1. ## 🧹 CleanUp
 
-   If you want to destroy all the resources created by the stack, Execute the below command to delete the stack, or _you can delete the stack from console as well_
+If you want to destroy all the resources created by the stack, Execute the below command to delete the stack, or _you can delete the stack from console as well_
 
-   ```bash
-   cdk destroy *
-   ```
+```bash
+cdk destroy *
+```
 
-   This is not an exhaustive list, please carry out other necessary steps as maybe applicable to your needs.
+This is not an exhaustive list, please carry out other necessary steps as maybe applicable to your needs.
+
+## Typescript
+
+The project contains a few experimental stacks in typescript for OrientDb.
+Please customize to fit your requirements.
+
+```ts
+const instance = new ec2.Instance(this, "orientdb-instance", {
+   // ...
+}
+
+const userScript = fs.readFileSync("lib/user_script.sh", "utf8");
+
+// add user script to instance
+// this script runs when the instance is started
+instance.addUserData(userScript);
+```
+
+### Fargate
+
+See [FargateCluster](https://docs.aws.amazon.com/cdk/api/latest/python/aws_cdk.aws_eks/FargateCluster.html)
+
+`bootstrap_enabled` (Optional[bool]) – Configures the EC2 user-data script for instances in this autoscaling group to bootstrap the node (invoke /etc/eks/bootstrap.sh) and associate it with the EKS cluster. If you wish to provide a custom user data script, set this to false and manually invoke `autoscalingGroup.addUserData()`. Default: `true`
+
+You will need to use a manual boostrap of your EC2 or Fargate instance.
+You can supply the following bootstrap script to your instance.
+It will install docker and docker-compose ready for use and execute `docker-compose up -d`
+
+```sh
+#! /bin/sh
+yum update -y
+
+# install docker
+amazon-linux-extras install docker
+service docker start
+
+# allow EC2 to use docker (without sudo) via ec2-user
+usermod -a -G docker ec2-user
+chkconfig docker on
+# enable and start docker
+sudo systemctl enable docker
+sudo systemctl start docker
+
+# Install docker-compose
+sudo curl -L "https://github.com/docker/compose/releases/download/1.29.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+
+# export ORIENTDB_ROOT_PASSWORD root
+docker-compose up -d
+```
+
+Use a `docker-compose.yaml` file like the following. Note that you need to supply the environment variable `ORIENTDB_ROOT_PASSWORD` (such as in your user data script). This will set the root password to that value on the first instantiation of OrientDb.
+
+```yaml
+version: "3"
+services:
+  db:
+    image: orientdb:3.1.11
+    environment:
+      - "ORIENTDB_ROOT_PASSWORD=${ORIENTDB_ROOT_PASSWORD}"
+    tty: true
+    volumes:
+      - "./config:/orientdb/config"
+      - "./databases:/orientdb/databases"
+      - "./backup:/orientdb/backup"
+      - "./db:/db"
+    ports:
+      - "2424:2424"
+      - "2480:2480"
+```
+
+OrientDB exposes port `2424` to execute the binary (over `TCP` or `SSH` or similar) and port `2480` for HTTP (internet) access.
+
+Ideally we aim to create an OrientDb CDK construct that can be reused in any stack. See [CDK Solution constructs](https://docs.aws.amazon.com/solutions/latest/constructs/welcome.html).
+
+_AWS Solutions Constructs (Constructs) is an open-source extension of the AWS Cloud Development Kit (AWS CDK) that provides multi-service, well-architected patterns for quickly defining solutions in code to create predictable and repeatable infrastructure._
+
+### Resources
+
+- [Free OrientDB Udemy course - Getting started](https://www.udemy.com/course/orientdb-getting-started)
+- [Gremlin Graph Guide](https://www.kelvinlawrence.net/book/Gremlin-Graph-Guide.html)
+- [Graph Dbs](https://uhack-guide.readthedocs.io/en/latest/technical/graph-dbs/)
 
 ### 💡 Help/Suggestions or 🐛 Bugs
 
