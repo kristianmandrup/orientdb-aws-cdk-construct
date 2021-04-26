@@ -1,0 +1,11 @@
+<hazelcast>
+  <network>
+    <port auto-increment="true">2434</port>
+      <join>
+        <multicast enabled="true">
+          <multicast-group>235.1.1.1</multicast-group>
+          <multicast-port>2434</multicast-port>
+       </multicast>
+     </join>
+  </network>
+</hazelcast>

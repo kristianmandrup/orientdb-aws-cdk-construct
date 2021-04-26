@@ -1,0 +1,11 @@
+<handler class="com.orientechnologies.orient.server.hazelcast.OHazelcastPlugin">
+  <parameters>
+    <!-- NODE-NAME. IF NOT SET IS AUTO GENERATED THE FIRST TIME THE SERVER RUN -->
+    <!-- <parameter name="nodeName" value="europe1" /> -->
+    <parameter name="enabled" value="true" />
+    <parameter name="configuration.db.default"
+               value="${ORIENTDB_HOME}/config/distributed-db-config.json" />
+    <parameter name="configuration.hazelcast"
+               value="${ORIENTDB_HOME}/config/hazelcast.xml" />
+  </parameters>
+</handler>
