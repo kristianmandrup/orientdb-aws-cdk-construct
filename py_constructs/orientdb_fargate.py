@@ -47,7 +47,13 @@ class OrientDbOnFargateStack(core.Stack):
         # load image from registry or asset
         # https://github.com/aws/aws-cdk/blob/master/packages/%40aws-cdk/aws-ecs/lib/container-image.ts
         image = _ecs.ContainerImage.from_asset("../docker")
+        # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/bootstrap_container_instance.html
+        # https://medium.com/appgambit/part-1-running-docker-on-aws-ec2-cbcf0ec7c3f8
         # docker run -d --restart=always --name orientdb -p 2424:2424 -p 2480:2480 -e ORIENTDB_ROOT_PASSWORD=root orientdb
+
+        # https://github.com/rongfengliang/orientdb-docker-compose
+        # https://github.com/docker/compose/blob/129092b7/docs/yml.md#variable-substitution
+        # https://github.com/broadinstitute/docker-orientdb
 
         # image = _ecs.ContainerImage.from_registry("orientdb")
 
