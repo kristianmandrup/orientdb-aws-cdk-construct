@@ -100,7 +100,7 @@ Use a `docker-compose.yaml` file like the following. Note that you need to suppl
 version: "3"
 services:
   db:
-    image: orientdb:3.1.11
+    image: orientdb:${ORIENTDB_IMAGE}
     environment:
       - "ORIENTDB_ROOT_PASSWORD=${ORIENTDB_ROOT_PASSWORD}"
     tty: true
@@ -114,7 +114,18 @@ services:
       - "2480:2480"
 ```
 
+For the `ORIENTDB_IMAGE` environment variable, use either `3.1.11` or `3.1.11-tp3` (to include TinkerPop 3 Gremlin server)
+
 OrientDB exposes port `2424` to execute the binary (over `TCP` or `SSH` or similar) and port `2480` for HTTP (internet) access.
+
+If you use an image with Gremlin Server included, the Gremlin Server is exposed on port `8182`. You must then include an additional ports entry.
+
+```yaml
+ports:
+  - "2424:2424"
+  - "2480:2480"
+  - "8182:8182"
+```
 
 ## EC2 instance
 
@@ -156,6 +167,12 @@ volumes:
   - "./db:/db"
 ```
 
+These volumes [match the volumes of the official OrientDb Dockerfile](https://github.com/orientechnologies/orientdb-docker/blob/master/release/3.1.x/3.1.11/Dockerfile#L35)
+
+The official Docker image downloads the orientDb distribution from [here](https://repo1.maven.org/maven2/com/orientechnologies/orientdb-community/3.1.11/)
+
+The OrientDB gremlin server can be found [here](https://repo1.maven.org/maven2/com/orientechnologies/orientdb-gremlin-server/3.1.11/)
+
 See the following resources for detailed OrientDB configuration guides.
 
 - [Server-Security](https://orientdb.com/docs/2.2.x/Server-Security.html)
@@ -174,6 +191,103 @@ We have included skeleton files for setting up AWS AppSync with OrientDb, so tha
 
 It is a currently a Work In Progress (WIP)
 
+## OrientDB NodeJs/Javascript driver
+
+- [orientjs](https://www.npmjs.com/package/orientjs)
+
+```js
+const OrientDBClient = require("orientjs").OrientDBClient;
+
+OrientDBClient.connect({
+  host: "localhost",
+  port: 2424,
+})
+  .then((client) => {
+    return client.close();
+  })
+  .then(() => {
+    console.log("Client closed");
+  });
+```
+
+- [orientdb nodejs gremlin](https://discourse.orientdb.org/t/orientdb-nodejs-gremlin/696/2)
+- [gremlin-node](https://github.com/inolen/gremlin-node)
+- [Apache gremlin-javascript](https://tinkerpop.apache.org/docs/current/reference/#gremlin-javascript)
+- [ts-tinkerpop](https://github.com/RedSeal-co/ts-tinkerpop)
+- [awesome tinkerpop](https://awesomeopensource.com/project/mohataher/awesome-tinkerpop?categoryPage=35)
+
+Executing Gremlin/TinkePop
+
+```js
+const authenticator = new gremlin.driver.auth.PlainTextSaslAuthenticator(
+  "root",
+  "root"
+);
+const remote = new gremlin.driver.DriverRemoteConnection(
+  "ws://localhost:8182/gremlin",
+  {
+    authenticator,
+    traversalSource: "g",
+  }
+);
+remote.addListener("socketError", (error) => {
+  console.log(`socketError: ${error}`);
+});
+try {
+  remote.open();
+  const g = await traversal().withRemote(remote);
+  const results = g.V().toList();
+} catch (e) {
+  console.log(e);
+}
+```
+
+ECMA Script example
+
+```js
+import * as gremlin from "gremlin";
+const DriverRemoteConnection = gremlin.driver.DriverRemoteConnection;
+
+const dbUsername = proc.env.dbUsername;
+const dbPassword = proc.env.dbPassword;
+
+const authenticator = new gremlin.driver.auth.PlainTextSaslAuthenticator(
+  dbUsername,
+  dbPassword
+);
+const traversal = gremlin.process.AnonymousTraversalSource.traversal;
+
+const host = proc.env.dbHost || "localhost";
+
+const g = traversal().withRemote(
+  new DriverRemoteConnection(`ws://${host}:8182/gremlin`, {
+    authenticator: authenticator,
+  })
+);
+```
+
+## OrientDB Gremlin API
+
+The easiest and quickest way to execute a gremlin query against OrientDB is to use the REST API (port 2480, NOT binary port 2424). It is one call, I suggest trying it out first in postman.
+
+```sh
+[POST] http://:2480/command//gremlin
+```
+
+Then the request body can look like this:
+
+```json
+{
+  "command": "g.V().has('name', 'marko')"
+}
+```
+
+Pass the OrientDB credentials as basic auth
+
+In NodeJS/JavaScript simply use superagent or a similar module to call the REST API. Then analyze the results which are returned as JSON.
+
+See also: [OrientDB-REST](https://orientdb.com/docs/last/OrientDB-REST.html)
+
 ### OrientDB Solution construct
 
 Ideally we aim to create an OrientDb CDK construct that can be reused in any stack. See [CDK Solution constructs](https://docs.aws.amazon.com/solutions/latest/constructs/welcome.html).
@@ -184,7 +298,17 @@ _AWS Solutions Constructs (Constructs) is an open-source extension of the AWS Cl
 
 ### Resources
 
+#### Books
+
+- [Book: Getting started with OrientDB](https://allitbooks.net/programming/4050-getting-started-orientdb.html)
+- [Free E-book: Installing OrientDb](https://riptutorial.com/Download/orientdb.pdf)
+
+#### Courses
+
 - [Free OrientDB Udemy course - Getting started](https://www.udemy.com/course/orientdb-getting-started)
+
+#### GraphDB and Gremlin guides
+
 - [Gremlin Graph Guide](https://www.kelvinlawrence.net/book/Gremlin-Graph-Guide.html)
 - [Graph Dbs](https://uhack-guide.readthedocs.io/en/latest/technical/graph-dbs/)
 

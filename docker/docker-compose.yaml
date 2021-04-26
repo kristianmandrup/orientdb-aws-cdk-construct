@@ -1,7 +1,7 @@
 version: "3"
 services:
   db:
-    image: orientdb:3.1.11
+    image: orientdb:{ORIENTDB_IMAGE}
     environment:
       - "ORIENTDB_ROOT_PASSWORD=${ORIENTDB_ROOT_PASSWORD}"
     tty: true
