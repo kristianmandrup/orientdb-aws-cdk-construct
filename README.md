@@ -248,8 +248,8 @@ ECMA Script example
 import * as gremlin from "gremlin";
 const DriverRemoteConnection = gremlin.driver.DriverRemoteConnection;
 
-const dbUsername = proc.env.dbUsername;
-const dbPassword = proc.env.dbPassword;
+const dbUsername = process.env.dbUsername;
+const dbPassword = process.env.dbPassword;
 
 const authenticator = new gremlin.driver.auth.PlainTextSaslAuthenticator(
   dbUsername,
@@ -257,7 +257,7 @@ const authenticator = new gremlin.driver.auth.PlainTextSaslAuthenticator(
 );
 const traversal = gremlin.process.AnonymousTraversalSource.traversal;
 
-const host = proc.env.dbHost || "localhost";
+const host = process.env.dbHost || "localhost";
 
 const g = traversal().withRemote(
   new DriverRemoteConnection(`ws://${host}:8182/gremlin`, {
@@ -266,7 +266,7 @@ const g = traversal().withRemote(
 );
 ```
 
-## OrientDB Gremlin API
+## OrientDB Gremlin REST API
 
 The easiest and quickest way to execute a gremlin query against OrientDB is to use the REST API (port 2480, NOT binary port 2424). It is one call, I suggest trying it out first in postman.
 
