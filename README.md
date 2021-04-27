@@ -500,6 +500,157 @@ In NodeJS/JavaScript simply use superagent or a similar module to call the REST 
 
 See also: [OrientDB-REST](https://orientdb.com/docs/last/OrientDB-REST.html)
 
+## Configuring replication
+
+[How to configure replication in orientdb](https://difyel.com/orientdb/how-to-configure-replication-in-orientdb/index.html)
+
+The default configuration in `orientdb-server-config.xml` is sufficient .
+
+```xml
+<!-- orientdb-version/config/orientdb-server-config.xml -->
+<handler class="com.orientechnologies.orient.server.hazelcast.OHazelcastPlugin">
+    <parameters>
+        <parameter value="${distributed}" name="enabled"/>
+        <parameter value="${ORIENTDB_HOME}/config/default-distributed-db-config.json" name="configuration.db.default"/>
+        <parameter value="${ORIENTDB_HOME}/config/hazelcast.xml" name="configuration.hazelcast"/>
+        <parameter value="development" name="nodeName"/>
+    </parameters>
+</handler>
+```
+
+To configure the replication protocol, edit `orientdb-server-config.xml`, for each server.
+
+```xml
+<!-- The config/orientdb-server-config.xml file .-->
+<?xml version="1.0" encoding="UTF-8"?>
+<hazelcast
+        xsi:schemaLocation="http://www.hazelcast.com/schema/config">
+ 
+    <group>
+        <name>orientdb</name>
+        <password>orientdb</password>
+    </group>
+ 
+    <properties>
+        <property name="hazelcast.phone.home.enabled">false</property>
+        ...
+    </properties>
+ 
+    <network>
+        <port auto-increment="false">2434</port>
+        <join>
+ 
+            <multicast enabled="false">
+                <multicast-group>235.1.1.1</multicast-group>
+                <multicast-port>2434</multicast-port>
+            </multicast>
+ 
+            <tcp-ip enabled="true">
+                <member>ipaddress</member>
+                <member>ipaddress:port</member>
+                <member>host</member>
+                <member>host:port</member>
+                ...
+            </tcp-ip>
+ 
+        </join>
+    </network>
+ 
+    <executor-service>
+        <pool-size>16</pool-size>
+    </executor-service>
+ 
+</hazelcast>
+```
+
+The group `name` and `password`, are the cluster's name and password. Make sure to change them, and to choose a _secure password_.
+
+The `network` is the network protocol to be used. The network protocol can be set to `multicast`, if on the local network or on the same PC. In such a case, nothing is to be configured, just make sure that `multicast` is enabled, as in `enabled="true"`
+
+If on different or remote networks (such as on separate EC2 instance on AWS) the network protocol can be set to `tcp-ip`. For `tcp-ip`, you can specify the _IP address_ or _host name_ with optionally a `port` number , as in `192.168.0.4:2424`.
+
+For each server, that is to be part of the group, just add its details using the member tag.
+
+```xml
+<tcp-ip enabled="true">
+    <member>192.168.0.4:2424</member>
+    <member>192.168.0.5:2424</member>
+    ...
+</tcp-ip>
+```
+
+Having configured the network protocol , it is time to configure database replication , which can be done in `default-distributed-db-config.json`. This file is copied, and updated as `distributed-config.json`, to each database folder in `/databases`
+
+```json
+// The config/default-distributed-db-config.json file .
+{
+  "autoDeploy": true,
+  "executionMode": "undefined",
+  "readQuorum": 1,
+  "writeQuorum": "majority",
+  "readYourWrites": true,
+  "newNodeStrategy": "static",
+  "servers": {
+    "production": "master",
+    "development": "replica"
+  },
+  "clusters": {
+    "internal": {},
+    "*": {
+      "servers": [""]
+    }
+  }
+}
+```
+
+`servers` What is the role of each server , for example the server which was given the name of `production` is a `master`, and the one given the name of `development` is `replica`. `"servers":{"*": "master"}` , can be used to state that all servers are masters.
+
+More than one master can be configured , a replica server is just a replica , it does not count into voting in `writeQuorum`.
+
+In the example, two nodes were specified, one as being a `master` and the second one as being a `replica`, other configuration options, are explained in the preceding code, as in having all nodes to be masters, which is the default.
+
+That is it for configuring replication using orientdb , the servers can be started using `./dserver.sh` . Start the `replica` after the `master`.
+
+To check if everything is working correctly, a database can be created as in `create database remote:localhost/nameOfDb root thePassword`, on the `master` server, using the console, which can be launched from the `bin` folder, and using the console in the `replica` server. After issuing the command `connect remote:localhost/ root thePassword`, the command `List databases` can be run to verify that the created database has been replicated.
+
+## Enabling SSL using Certificates
+
+Also see [Using SSL with OrientDB](https://orientdb.com/docs/last/security/Using-SSL-with-OrientDB.html) for how to configure SSL using certificates.
+
+To create key and trust stores that reference a self-signed certificate, use the following guide:
+
+Using Keytool, create a certificate for the server:
+
+```sh
+keytool -genkey -alias server -keystore orientdb.ks -keyalg RSA -keysize 2048 -validity 3650
+```
+
+Export the server certificate to share it with client:
+
+```sh
+keytool -export -alias server -keystore orientdb.ks -file orientdb.cert
+```
+
+Create a certificate/keystore for the console/clients:
+
+```sh
+keytool -genkey -alias console -keystore orientdb-console.ks -keyalg RSA -keysize 2048 -validity 3650
+```
+
+Create a trust-store for the client, then import the server certificate.
+
+```sh
+keytool -import -alias server -keystore orientdb-console.ts -file orientdb.cert
+```
+
+This establishes that the client trusts the server. You now have a self-signed certificate to use with OrientDB
+
+The server configuration file, `$ORIENTDB_HOME/config/orientdb-server-config.xml`, does not use SSL by default. To enable SSL on a protocol listener, you must change the socket attribute to the `<listener>` value from default to one of your configured `<socket>` definitions.
+
+There are two default definitions available: ssl and https. For most use cases this is sufficient, however you can define more if you want to secure different listeners with their own certificates or would like to use a custom factory implementations. When using the ssl implementation, bear in mind that the default port for OrientDB SSL is `2434`. You need to change your port range to `2434-2440`.
+
+By default, the OrientDB server looks for its keys and trust-stores in `$ORIENTDB_HOME/config/cert`
+
 ### OrientDB Solution construct
 
 Ideally we aim to create an OrientDb CDK construct that can be reused in any stack. See [CDK Solution constructs](https://docs.aws.amazon.com/solutions/latest/constructs/welcome.html).
