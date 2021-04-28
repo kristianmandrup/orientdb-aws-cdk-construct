@@ -1,6 +1,6 @@
 import { createTcpIp } from "./tcp-members";
 
-const createGroup = ({
+export const createGroup = ({
   username,
   password,
 }: {
@@ -20,7 +20,11 @@ const createGroup = ({
   ],
 });
 
-const createExecutorService = ({ poolSize }: any) => ({
+export const createExecutorService = ({
+  poolSize,
+}: {
+  poolSize: string | number;
+}) => ({
   _name: "executor-service",
   _content: [
     {
@@ -30,7 +34,13 @@ const createExecutorService = ({ poolSize }: any) => ({
   ],
 });
 
-const createPort = (port, autoIncrement = false) => ({
+export const createPort = ({
+  port,
+  autoIncrement,
+}: {
+  port: string | number;
+  autoIncrement?: boolean;
+}) => ({
   _name: "port",
   _attrs: {
     "auto-increment": autoIncrement,
@@ -38,20 +48,30 @@ const createPort = (port, autoIncrement = false) => ({
   _content: port,
 });
 
-const createProperties = (props) => ({
-  properties: {
-    _content: Object.keys(props).map((key) => ({
-      _name: "property",
-      _attrs: {
-        name: key,
-      },
-      _content: props[key],
-    })),
-  },
+interface IProps {
+  [key: string]: string;
+}
+
+export const createProperties = ({ properties }: { properties: IProps }) => ({
+  _name: "properties",
+  _content: Object.keys(properties).map((key) => ({
+    _name: "property",
+    _attrs: {
+      name: key,
+    },
+    _content: properties[key],
+  })),
 });
 
-const createMultiCast = (opts: any = {}, enabled = false) => {
-  const { group, port } = opts;
+export const createMultiCast = ({
+  group,
+  port,
+  enabled,
+}: {
+  group: string;
+  port: string | number;
+  enabled: boolean;
+}) => {
   return {
     _name: "multicast",
     _attrs: {
@@ -70,22 +90,22 @@ const createMultiCast = (opts: any = {}, enabled = false) => {
   };
 };
 
-const createJoin = (config) => ({
+export const createJoin = (config) => ({
   _name: "join",
-  _content: [createMultiCast(config), createTcpIp(config)],
+  _content: [createMultiCast(config.multicast), createTcpIp(config.tcpIp)],
 });
 
-const createNetwork = (config) => ({
+export const createNetwork = (config) => ({
   _name: "network",
-  _content: [createPort(config), createJoin(config)],
+  _content: [createPort(config.port), createJoin(config.join)],
 });
 
-const createHazelcast = (config) => ({
+export const createHazelcast = (config) => ({
   _name: "hazelcast",
   _content: [
-    createGroup(config),
+    createGroup(config.group),
     createProperties(config),
-    createNetwork(config),
-    createExecutorService(config),
+    createNetwork(config.network),
+    createExecutorService(config.executor),
   ],
 });

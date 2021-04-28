@@ -1,6 +1,12 @@
 import { toXML } from "jstoxml";
 
-export const createTcpIp = (members: string[], enabled = true) => {
+export const createTcpIp = ({
+  members,
+  enabled,
+}: {
+  members: string[];
+  enabled: boolean;
+}) => {
   const $members = members.map((member) => ({
     _name: "member",
     _content: member,
@@ -8,13 +14,13 @@ export const createTcpIp = (members: string[], enabled = true) => {
   return {
     _name: "tcp-ip",
     _attrs: {
-      enabled,
+      enabled: enabled === undefined ? "true" : enabled,
     },
     _content: $members,
   };
 };
 
-export const createTcpIpXml = (members: string[], enabled = true) => {
-  const elem = createTcpIp(members, enabled);
+export const createTcpIpXml = (tcpIpConfig) => {
+  const elem = createTcpIp(tcpIpConfig);
   return toXML(elem);
 };
