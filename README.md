@@ -131,14 +131,14 @@ ports:
 
 An EC2 instance can be configured for OrientDb as follows, using User Data to customize and control bootstrapping behaviour.
 
-A sample EC2 CDK stack can be found in `lib/orientdb-ec2-stack.ts` (untested)
+A sample EC2 CDK stack can be found in `src/orientdb-ec2-stack.ts` (untested)
 
 ```ts
 const instance = new ec2.Instance(this, "orientdb-instance", {
    // ...
 }
 
-const userScript = fs.readFileSync("lib/user_script.sh", "utf8");
+const userScript = fs.readFileSync("src/user_script.sh", "utf8");
 
 // add user script to instance
 // this script runs when the instance is started
@@ -151,7 +151,7 @@ See [FargateCluster](https://docs.aws.amazon.com/cdk/api/latest/python/aws_cdk.a
 
 `bootstrap_enabled` (Optional[bool]) – Configures the EC2 user-data script for instances in this autoscaling group to bootstrap the node (invoke /etc/eks/bootstrap.sh) and associate it with the EKS cluster. If you wish to provide a custom user data script, set this to false and manually invoke `autoscalingGroup.addUserData()`. Default: `true`
 
-A sample Fargate CDK stack can be found in `lib/orientdb-fargate-stack.ts` (untested)
+A sample Fargate CDK stack can be found in `src/orientdb-fargate-stack.ts` (untested)
 
 ### Clustered Fargate setup
 
@@ -164,7 +164,7 @@ Using AWS Cloud Map, we can define custom names for our application microservice
 This is ideal for when we set up a replication cluster as we need to define the host names or IP addresses of the cluster nodes in the configuration file.
 
 Ideally you would generate the cluster config files (`config/orientdb-server-config.xml` and `distributed-db-config.json`) by templating, passing in the fargate service names (an OrientDB cluster node can be seen as just another "service").
-For templating see [EJS documentation](https://ejs.co/#install). A sample EJS template for generating xml for `tcp-ip` members have been included in the `lib/templates` folder.
+For templating see [EJS documentation](https://ejs.co/#install). A sample EJS template for generating xml for `tcp-ip` members have been included in the `src/templates` folder.
 
 ```ejs
 <tcp-ip enabled="true">
@@ -536,7 +536,7 @@ We have included skeleton files for setting up AWS AppSync with OrientDb, so tha
 
 - `bin`
 - `lambda-fns`
-- `lib/appsync-orientdb-stack`
+- `src/appsync-orientdb-stack`
 
 It is a currently a Work In Progress (WIP)
 
@@ -902,7 +902,7 @@ By default, the OrientDB server looks for its keys and trust-stores in `$ORIENTD
 
 Ideally we aim to create an OrientDb CDK construct that can be reused in any stack. See [CDK Solution constructs](https://docs.aws.amazon.com/solutions/latest/constructs/welcome.html).
 
-A skeleton construct can be found in `lib/orientdb-construct`. Please help make it a reality :)
+A skeleton construct can be found in `src/orientdb-construct`. Please help make it a reality :)
 
 _AWS Solutions Constructs (Constructs) is an open-source extension of the AWS Cloud Development Kit (AWS CDK) that provides multi-service, well-architected patterns for quickly defining solutions in code to create predictable and repeatable infrastructure._
 
