@@ -159,6 +159,17 @@ See [http-api-aws-fargate-cdk](https://github.com/aws-samples/http-api-aws-farga
 
 AWS Cloud Map allows us to register any application resources, such as microservices, and other cloud resources, with custom names.
 
+[What Is AWS Cloud Map?](https://docs.aws.amazon.com/cloud-map/latest/dg/what-is-cloud-map.html)
+
+AWS Cloud Map is a fully managed service that you can use to create and maintain a map of the backend services and resources that your applications depend on.
+
+You create an AWS Cloud Map service for each type of resource for which you want to use AWS Cloud Map to locate endpoints. For example, you might create services for web servers and database servers.
+
+See videos
+
+- [AWS re:Invent 2018 - Introducing AWS Cloud Map](https://www.youtube.com/watch?v=fMGd9IUaotE)
+- [AWS Tutorial - Service Discovery using Amazon Cloud Map](https://www.youtube.com/watch?v=xO08vlkJI7g)
+
 Using AWS Cloud Map, we can define custom names for our application microservices, and it maintains the updated location of these dynamically changing microservices.
 
 This is ideal for when we set up a replication cluster as we need to define the host names or IP addresses of the cluster nodes in the configuration file.
