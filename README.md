@@ -153,6 +153,209 @@ See [FargateCluster](https://docs.aws.amazon.com/cdk/api/latest/python/aws_cdk.a
 
 A sample Fargate CDK stack can be found in `lib/orientdb-fargate-stack.ts` (untested)
 
+### Clustered Fargate setup
+
+See [http-api-aws-fargate-cdk](https://github.com/aws-samples/http-api-aws-fargate-cdk) sample setup
+
+AWS Cloud Map allows us to register any application resources, such as microservices, and other cloud resources, with custom names.
+
+Using AWS Cloud Map, we can define custom names for our application microservices, and it maintains the updated location of these dynamically changing microservices.
+
+This is ideal for when we set up a replication cluster as we need to define the host names or IP addresses of the cluster nodes in the configuration file.
+
+Details on how to configure in OrientDB can be found further below.
+
+You can also use named fargate services as micro services to execute business logic, such as handling API calls from a REST or GraphQL API and executing them on the OrientDB cluster.
+
+#### VPC
+
+This single line of code creates a OrientVPC with two Public and two Private Subnets.
+
+`const vpc = new ec2.Vpc(this, "OrientVPC");`
+
+#### ECS Cluster
+
+This creates an Amazon ECS cluster inside the OrientVPC, we shall be running the two microservices inside this ECS cluster using AWS Fargate.
+
+```js
+const cluster = new ecs.Cluster(this, "Orient Cluster", {
+  vpc: vpc,
+});
+```
+
+#### Cloud Map Namespace
+
+AWS Cloud Map allows us to register any application resources, such as microservices, and other cloud resources, with custom names.Using AWS Cloud Map, we can define custom names for our application microservices, and it maintains the updated location of these dynamically changing microservices.
+
+```js
+const dnsNamespace = new servicediscovery.PrivateDnsNamespace(
+  this,
+  "DnsNamespace",
+  {
+    name: "http-api.local",
+    vpc: vpc,
+    description: "Private DnsNamespace for Microservices",
+  }
+);
+```
+
+#### ECS Task Role
+
+```js
+const taskrole = new iam.Role(this, "ecsTaskExecutionRole", {
+  assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+});
+
+taskrole.addManagedPolicy(
+  iam.ManagedPolicy.fromAwsManagedPolicyName(
+    "service-role/AmazonECSTaskExecutionRolePolicy"
+  )
+);
+```
+
+#### Task Definitions
+
+A task definition is required to run Docker containers in Amazon ECS, we shall create the task definitions (`bookServiceTaskDefinition` and `authorServiceTaskDefinition`) for the two microservices.
+
+You should create factory functions to encapsulate your conventions.
+
+```js
+const createFargateTaskDefinition = (name, opts = {}) => Fargnew ecs.FargateTaskDefinition(
+  this,
+  name,
+  {
+    memoryLimitMiB: 512,
+    cpu: 256,
+    taskRole: taskrole,
+    ...opts
+  }
+);
+
+const bookServiceTaskDefinition = createFargateTaskDefinition("bookServiceTaskDef")
+const authorServiceTaskDefinition = createFargateTaskDefinition("authorServiceTaskDef")
+```
+
+#### Security Groups
+
+In order to control the inbound and outbound traffic to Fargate tasks, we shall create two security groups that act as a virtual firewall.
+
+```js
+const createSecurityGroup = (name, opts = {}) => {
+  const secGrp = new ec2.SecurityGroup(this, name, {
+    allowAllOutbound: true,
+    securityGroupName: name,
+    vpc: vpc,
+    ...opts,
+  });
+  secGrp.connections.allowFromAnyIpv4(ec2.Port.tcp(80));
+  return secGrp;
+};
+
+const bookServiceSecGrp = createSecurityGroup("bookServiceSecurityGroup");
+const authorServiceSecGrp = createSecurityGroup("authorServiceSecurityGroup");
+```
+
+#### Named Fargate Services
+
+Let us create two ECS Fargate services (`bookService` & `authorService`) based on the task definitions created above. An Amazon ECS service enables you to run and maintain a specified number of instances of a task definition simultaneously in an Amazon ECS cluster. If any of your tasks should fail or stop for any reason, the Amazon ECS service scheduler launches another instance of your task definition to replace it in order to maintain the desired number of tasks in the service.
+
+```js
+const createService = (name, opts = {}) =>
+  new ecs.FargateService(this, name, {
+    cluster: cluster,
+    taskDefinition: bookServiceTaskDefinition,
+    assignPublicIp: false,
+    desiredCount: 2,
+    securityGroup: bookServiceSecGrp,
+    cloudMapOptions: {
+      name,
+    },
+    ...opts,
+  });
+
+const bookService = createService("bookService");
+const authorService = createService("authorService");
+```
+
+Note the `cloudMapOptions` entry for each.
+
+#### ALB
+
+The load balancer distributes incoming application traffic across multiple ECS services, in multiple Availability Zones. This increases the availability of your application. Let us add an Application Load Balancer.
+
+```js
+const httpapiInternalALB = new elbv2.ApplicationLoadBalancer(
+  this,
+  "httpapiInternalALB",
+  {
+    vpc: vpc,
+    internetFacing: false,
+  }
+);
+```
+
+#### ALB Listener
+
+An ALB listener checks for connection requests from clients, using the protocol and port that we configure.
+
+```js
+const httpapiListener = httpapiInternalALB.addListener("httpapiListener", {
+  port: 80,
+  // Default Target Group
+  defaultAction: elbv2.ListenerAction.fixedResponse(200),
+});
+```
+
+#### Target Groups
+
+We shall create two target groups, `bookServiceTargetGroup` for `bookService` microservice and `authorServiceTargetGroup` for `authorService` microservice.
+
+```js
+const createServiceTargetGroup = (name, targets, path, priority, opts = {}) =>
+  httpapiListener.addTargets(name, {
+    port: 80,
+    priority,
+    healthCheck: {
+      path: `${path}/health`,
+      interval: cdk.Duration.seconds(30),
+      timeout: cdk.Duration.seconds(3),
+    },
+    targets: targets,
+    pathPattern: `${path}*`,
+    ...opts,
+  });
+
+const bookServiceTargetGroup = addServiceTargetGroup(
+  "bookServiceTargetGroup",
+  [bookService],
+  "/api/books",
+  1
+);
+
+const authorServiceTargetGroup = httpapiListener.addTargets(
+  "authorServiceTargetGroup",
+  [authorService],
+  "/api/authors",
+  2
+);
+```
+
+#### VPC Link
+
+It is easy to expose our HTTP/HTTPS resources behind an Amazon VPC for access by clients outside of the Orient VPC using API Gateway private integration. To extend access to our private VPC resources beyond the VPC boundaries, we can create an HTTP API with private integration for open access or controlled access. The private integration uses an API Gateway resource of `VpcLink` to encapsulate connections between API Gateway and targeted VPC resources.
+
+As an owner of a VPC resource, we are responsible for creating an Application Load Balancer in our Orient VPC and adding a VPC resource as a target of an Application Load Balancer's listener. As an HTTP API developer, to set up an HTTP API with the private integration, we are responsible for creating a `VpcLink` targeting the specified Application Load Balancer and then treating the `VpcLink` as an effective integration endpoint. Let us create a `Vpclink` based on the private subnets of the `OrientVPC`.
+
+```js
+this.httpVpcLink = new cdk.CfnResource(this, "HttpVpcLink", {
+  type: "AWS::ApiGatewayV2::VpcLink",
+  properties: {
+    Name: "http-api-vpclink",
+    SubnetIds: vpc.privateSubnets.map((m) => m.subnetId),
+  },
+});
+```
+
 ### OrientDB configuration
 
 For custom configuration of OrientDB, use the config files in the `config` folder. The main OrientDB config file is `config/orientdb-server-config.xml`
