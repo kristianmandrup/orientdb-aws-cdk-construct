@@ -163,9 +163,53 @@ Using AWS Cloud Map, we can define custom names for our application microservice
 
 This is ideal for when we set up a replication cluster as we need to define the host names or IP addresses of the cluster nodes in the configuration file.
 
-Details on how to configure in OrientDB can be found further below.
+Ideally you would generate the cluster config files (`config/orientdb-server-config.xml` and `distributed-db-config.json`) by templating, passing in the fargate service names (an OrientDB cluster node can be seen as just another "service").
+For templating see [EJS documentation](https://ejs.co/#install). A sample EJS template for generating xml for `tcp-ip` members have been included in the `lib/templates` folder.
 
-You can also use named fargate services as micro services to execute business logic, such as handling API calls from a REST or GraphQL API and executing them on the OrientDB cluster.
+```ejs
+<tcp-ip enabled="true">
+  <% members.forEach( function(member) { %>
+    <member><%= member %></member>
+  <% }); />
+</tcp-ip>
+```
+
+You could also use [jstoxml](https://www.npmjs.com/package/jstoxml?activeTab=readme) on a Javascript structure as follows
+
+```js
+const tcpIp = 'tcp-ip': {
+  _attrs: {
+    enabled: true
+  },
+  _content: [
+    {
+      member: {
+        _content: 'my-host-name:port'
+      }
+    },
+    {
+      member: {
+        _content: 'my-host-name-2:port'
+      }
+    },
+  ]
+}
+
+const xml = toXML(tcpIp)
+```
+
+Would generate:
+
+```xml
+<tcp-ip enabled="true">
+    <member>my-host-name:port</member>
+    <member>my-host-name-2:port</member>
+</tcp-ip>
+```
+
+See the section [Configuring replication](#Configuring-replication) below.
+
+You can also use named fargate services as micro services to execute business logic, such as handling API calls from a REST or GraphQL API and execute commands on the OrientDB cluster.
 
 #### VPC
 
@@ -311,7 +355,7 @@ const httpapiListener = httpapiInternalALB.addListener("httpapiListener", {
 We shall create two target groups, `bookServiceTargetGroup` for `bookService` microservice and `authorServiceTargetGroup` for `authorService` microservice.
 
 ```js
-const createServiceTargetGroup = (name, targets, path, priority, opts = {}) =>
+const addServiceTargetGroup = (name, targets, path, priority, opts = {}) =>
   httpapiListener.addTargets(name, {
     port: 80,
     priority,
