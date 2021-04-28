@@ -4,7 +4,7 @@ import {
   MatchStyle,
 } from "@aws-cdk/assert";
 import * as cdk from "@aws-cdk/core";
-import { AppsyncOrientDbStack } from "../lib/appsync-orientdb-stack";
+import { AppsyncOrientDbStack } from "../src/appsync-orientdb-stack";
 
 test("Empty Stack", () => {
   const app = new cdk.App();
