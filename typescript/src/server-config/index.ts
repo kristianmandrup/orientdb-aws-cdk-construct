@@ -43,14 +43,36 @@ export const protocols = (config) => ({
 
 export const createListeners = (config) => ({});
 
-export const users = (config) => ({
-  _name: "users",
-  _content: [],
+export interface IUser {
+  resources: string;
+  name: string;
+  password: string;
+}
+
+export const createUser = ({ resources, name, password }: IUser) => ({
+  _name: "user",
+  _attrs: {
+    resources,
+    name,
+    password,
+  },
 });
 
-export const security = (config) => ({
+export const createResource = () => {};
+
+export const createUsers = (users: IUser[]) => ({
+  _name: "users",
+  _content: users.map(createUser),
+});
+
+export const createResources = (resources: any[]) => ({
+  _name: "resources",
+  _content: resources && resources.map(createResource),
+});
+
+export const createSecurity = ({ users, resources }: any) => ({
   _name: "security",
-  _content: [],
+  _content: [createUsers(users), createResources(resources)],
 });
 
 export const createNetwork = (config) => ({
