@@ -400,6 +400,45 @@ this.httpVpcLink = new cdk.CfnResource(this, "HttpVpcLink", {
 });
 ```
 
+### Splitting Read and Write to Master and Replica
+
+We could follow the pattern in the [neptune-appsync CDK stack](https://github.com/dabit3/cdk-appsync-neptune/blob/main/lib/appsync-neptune-stack.ts) to have one url point to a master (cluster?) for writes, and one to a replica (cluster?) for reads.
+
+```js
+const cluster = new orient.DatabaseCluster(this, "OrientCluster", {
+  vpc,
+  instanceType: orient.InstanceType.R5_LARGE,
+});
+
+cluster.connections.allowDefaultPortFromAnyIpv4("Open to the world");
+
+const writeAddress = cluster.clusterEndpoint.socketAddress;
+
+new cdk.CfnOutput(this, "writeaddress", {
+  value: writeAddress,
+});
+
+const readAddress = cluster.clusterReadEndpoint.socketAddress;
+
+new cdk.CfnOutput(this, "readaddress", {
+  value: readAddress,
+});
+
+lambdaFn.addEnvironment("WRITER", writeAddress);
+lambdaFn.addEnvironment("READER", readAddress);
+```
+
+The lambdas that mutate data (write) would then reference the `WRITER` address while any lambda that query (read) data would reference the `READER` address.
+
+```js
+const uri = process.env.WRITER
+
+async function createPost(post: Post) {
+    let dc = new DriverRemoteConnection(`wss://${uri}/gremlin`, {})
+```
+
+For the pattern above to work seamlessly we would need to create a custom construct for `orient.DatabaseCluster`.
+
 ### OrientDB configuration
 
 For custom configuration of OrientDB, use the config files in the `config` folder. The main OrientDB config file is `config/orientdb-server-config.xml`
