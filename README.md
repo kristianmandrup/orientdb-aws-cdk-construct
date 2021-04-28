@@ -207,7 +207,9 @@ Would generate:
 </tcp-ip>
 ```
 
-See the section [Configuring replication](#Configuring-replication) below.
+A sample implementation of this xml templating functionality is included in `replication/tcp-members.ts`
+
+See the section [Configuring replication](#Configuring-replication) below for more details.
 
 You can also use named fargate services as micro services to execute business logic, such as handling API calls from a REST or GraphQL API and execute commands on the OrientDB cluster.
 
