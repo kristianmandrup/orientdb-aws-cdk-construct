@@ -168,7 +168,8 @@ You create an AWS Cloud Map service for each type of resource for which you want
 See videos
 
 - [AWS re:Invent 2018 - Introducing AWS Cloud Map](https://www.youtube.com/watch?v=fMGd9IUaotE)
-- [AWS Tutorial - Service Discovery using Amazon Cloud Map](https://www.youtube.com/watch?v=xO08vlkJI7g)
+- [Deep Dive Into AWS Cloud Map: Service Discovery for All Your Cloud Resources](https://www.youtube.com/watch?v=0a-J_Ki_GwY)
+- [AWS Tutorial - Service Discovery using Amazon Cloud Map](https://www.youtube.com/watch?v=xO08vlkJI7g) including a workshop with a Read and Write service that access a Database.
 
 Using AWS Cloud Map, we can define custom names for our application microservices, and it maintains the updated location of these dynamically changing microservices.
 
@@ -188,25 +189,24 @@ For templating see [EJS documentation](https://ejs.co/#install). A sample EJS te
 You could also use [jstoxml](https://www.npmjs.com/package/jstoxml?activeTab=readme) on a Javascript structure as follows
 
 ```js
-const tcpIp = 'tcp-ip': {
+const tcpIp = {
+  _name: "tcp-ip",
   _attrs: {
-    enabled: true
+    enabled: true,
   },
   _content: [
     {
-      member: {
-        _content: 'my-host-name:port'
-      }
+      _name: "member",
+      _content: "my-host-name:port",
     },
     {
-      member: {
-        _content: 'my-host-name-2:port'
-      }
+      _name: "member",
+      _content: "my-host-name-2:port",
     },
-  ]
-}
+  ],
+};
 
-const xml = toXML(tcpIp)
+const xml = toXML(tcpIp);
 ```
 
 Would generate:
@@ -218,7 +218,7 @@ Would generate:
 </tcp-ip>
 ```
 
-A sample implementation of this xml templating functionality is included in `replication/tcp-members.ts`
+Xml templating for hazelcast configuration is included in the `src/replication` folder.
 
 See the section [Configuring replication](#Configuring-replication) below for more details.
 
@@ -412,6 +412,8 @@ this.httpVpcLink = new cdk.CfnResource(this, "HttpVpcLink", {
   },
 });
 ```
+
+See also [AWS PrivateLink: Fundamentals](https://www.youtube.com/watch?v=20RxEzAXG9o)
 
 ### Splitting Read and Write to Master and Replica
 

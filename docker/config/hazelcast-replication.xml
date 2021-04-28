@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hazelcast xsi:schemaLocation="http://www.hazelcast.com/schema/config">
+ 
+    <group>
+        <name>orientdb</name>
+        <password>orientdb</password>
+    </group>
+ 
+    <properties>
+        <property name="hazelcast.phone.home.enabled">false</property>
+    </properties>
+ 
+    <network>
+        <port auto-increment="false">2434</port>
+        <join>
+ 
+            <multicast enabled="false">
+                <multicast-group>235.1.1.1</multicast-group>
+                <multicast-port>2434</multicast-port>
+            </multicast>
+ 
+            <tcp-ip enabled="true">
+                <member>ipaddress</member>
+                <member>ipaddress:port</member>
+                <member>host</member>
+                <member>host:port</member>
+            </tcp-ip>
+ 
+        </join>
+    </network>
+ 
+    <executor-service>
+        <pool-size>16</pool-size>
+    </executor-service>
+ 
+</hazelcast>
