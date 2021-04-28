@@ -1,5 +1,9 @@
 import { createTcpIp } from "./tcp-members";
 
+interface IProps {
+  [key: string]: string;
+}
+
 export const createGroup = ({
   username,
   password,
@@ -47,10 +51,6 @@ export const createPort = ({
   },
   _content: port,
 });
-
-interface IProps {
-  [key: string]: string;
-}
 
 export const createProperties = ({ properties }: { properties: IProps }) => ({
   _name: "properties",
