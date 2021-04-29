@@ -73,7 +73,7 @@ export class FargateVpclinkStack extends cdk.Stack {
       "authorServiceSecurityGroup"
     );
 
-    const createService = (name, opts = {}) =>
+    const createService = (name, securityGrp, opts = {}) =>
       new ecs.FargateService(this, name, {
         cluster: cluster,
         taskDefinition: bookServiceTaskDefinition,
@@ -86,23 +86,27 @@ export class FargateVpclinkStack extends cdk.Stack {
         ...opts,
       });
 
-    const bookService = createService("bookService");
-    const authorService = createService("authorService");
+    const bookService = createService("bookService", bookServiceSecGrp);
+    const authorService = createService("authorService", authorServiceSecGrp);
 
-    const httpapiInternalALB = new elbv2.ApplicationLoadBalancer(
-      this,
-      "httpapiInternalALB",
-      {
+    const createLoadBalancer = (name) =>
+      new elbv2.ApplicationLoadBalancer(this, name, {
         vpc: vpc,
         internetFacing: false,
-      }
-    );
+      });
 
-    const httpapiListener = httpapiInternalALB.addListener("httpapiListener", {
-      port: 80,
-      // Default Target Group
-      defaultAction: elbv2.ListenerAction.fixedResponse(200),
-    });
+    const addApiListener = (httpapiInternalALB, name) =>
+      httpapiInternalALB.addListener(name, {
+        port: 80,
+        // Default Target Group
+        defaultAction: elbv2.ListenerAction.fixedResponse(200),
+      });
+
+    const httpapiInternalALB = createLoadBalancer("httpapiInternalALB");
+    const httpapiListener = addApiListener(
+      httpapiInternalALB,
+      "httpapiListener"
+    );
 
     const addServiceTargetGroup = (name, targets, path, priority, opts = {}) =>
       httpapiListener.addTargets(name, {
@@ -125,7 +129,7 @@ export class FargateVpclinkStack extends cdk.Stack {
       1
     );
 
-    const authorServiceTargetGroup = httpapiListener.addTargets(
+    const authorServiceTargetGroup = addServiceTargetGroup(
       "authorServiceTargetGroup",
       [authorService],
       "/api/authors",
