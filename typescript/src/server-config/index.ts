@@ -17,15 +17,70 @@ interface IParams {
   [key: string]: string;
 }
 
+// implementation="com.orientechnologies.orient.server.network.protocol.http.command.get.OServerCommandGetStaticContent" pattern="GET|www GET|studio/ GET| GET|*.htm GET|*.html GET|*.xml GET|*.jpeg GET|*.jpg GET|*.png GET|*.gif GET|*.js GET|*.css GET|*.swf GET|*.ico GET|*.txt GET|*.otf GET|*.pjs GET|*.svg GET|*.json GET|*.woff GET|*.ttf GET|*.svgz" stateful="false"
+
+interface IParam {
+  key: string;
+  value: string;
+}
+
+interface IEntry {
+  name: string;
+  value: string;
+}
+
+interface ICommand {
+  implementation: string;
+  pattern: string;
+  stateful: boolean;
+  parameters: IParams;
+}
+
+export const createCommand = (command: ICommand) => ({
+  _name: "command",
+  _attrs: {
+    ...command,
+  },
+  _content: createCommandParameters(command),
+});
+
+export const createCommands = ({ commands }: { commands: ICommand[] }) => ({
+  _name: "parameters",
+  _content: commands.map(createCommand),
+});
+
+export const createParameter = ({ key, value }: IParam) => ({
+  _name: "parameter",
+  _attrs: {
+    name: key,
+    value,
+  },
+});
+
+export const createEntry = ({ name, value }: IEntry) => ({
+  _name: "entry",
+  _attrs: {
+    name,
+    value,
+  },
+});
+
+export const createCommandParameters = ({
+  parameters,
+}: {
+  parameters: IParams;
+}) => ({
+  _name: "parameters",
+  _content: Object.keys(parameters).map((name) => {
+    return createEntry({ name, value: parameters[name] });
+  }),
+});
+
 export const createParameters = ({ parameters }: { parameters: IParams }) => ({
   _name: "parameters",
-  _content: Object.keys(parameters).map((key) => ({
-    _name: "parameter",
-    _attrs: {
-      name: key,
-      value: parameters[key],
-    },
-  })),
+  _content: Object.keys(parameters).map((key) => {
+    return createParameter({ key, value: parameters[key] });
+  }),
 });
 
 export const createHazelCastHandler = (config) => ({
@@ -41,7 +96,29 @@ export const protocols = (config) => ({
   _content: [],
 });
 
-export const createListeners = (config) => ({});
+export interface IListener {
+  protocol: string;
+  socket: string;
+  portRange: string;
+  ipAddress: string;
+  commands: ICommand[];
+}
+
+export const createListener = (listener: IListener) => ({
+  _name: "listener",
+  _attrs: {
+    protocol: listener.protocol,
+    socket: listener.socket,
+    "port-range": listener.portRange,
+    "ip-address": listener.ipAddress,
+  },
+  _content: listener.commands && createCommands(listener),
+});
+
+export const createListeners = ({ listeners }: { listeners: IListener[] }) => ({
+  _name: "listeners",
+  _content: listeners.map(createListener),
+});
 
 export interface IUser {
   resources: string;
