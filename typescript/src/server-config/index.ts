@@ -36,13 +36,31 @@ interface ICommand {
   parameters: IParams;
 }
 
-export const createCommand = (command: ICommand) => ({
-  _name: "command",
-  _attrs: {
-    ...command,
-  },
-  _content: createCommandParameters(command),
-});
+const commandImplMap = {
+  static:
+    "com.orientechnologies.orient.server.network.protocol.http.command.get.OServerCommandGetStaticContent",
+};
+
+const patternMap = {
+  staticDefault:
+    "GET|www GET|studio/ GET| GET|*.htm GET|*.html GET|*.xml GET|*.jpeg GET|*.jpg GET|*.png GET|*.gif GET|*.js GET|*.css GET|*.swf GET|*.ico GET|*.txt GET|*.otf GET|*.pjs GET|*.svg GET|*.json GET|*.woff GET|*.ttf GET|*.svgz",
+};
+
+export const createCommand = (command: ICommand) => {
+  const implementation =
+    commandImplMap[command.implementation] || command.implementation;
+  const pattern = patternMap[command.pattern] || command.pattern;
+
+  return {
+    _name: "command",
+    _attrs: {
+      ...command,
+      implementation,
+      pattern,
+    },
+    _content: createCommandParameters(command),
+  };
+};
 
 export const createCommands = ({ commands }: { commands: ICommand[] }) => ({
   _name: "parameters",
@@ -83,6 +101,10 @@ export const createParameters = ({ parameters }: { parameters: IParams }) => ({
   }),
 });
 
+const pluginHandlerMap = {
+  hazelcast: "com.orientechnologies.orient.server.hazelcast.OHazelcastPlugin",
+};
+
 export const createHazelCastHandler = (config) => ({
   _name: "handler",
   _attrs: {
@@ -91,9 +113,35 @@ export const createHazelCastHandler = (config) => ({
   _content: [createParameters(config)],
 });
 
-export const protocols = (config) => ({
+const protocolImplMap = {
+  binary:
+    "com.orientechnologies.orient.server.network.protocol.binary.ONetworkProtocolBinary",
+  http:
+    "com.orientechnologies.orient.server.network.protocol.http.ONetworkProtocolHttpDb",
+};
+
+interface IProtocol {
+  implementation: string;
+  name: string;
+}
+
+export const createProtocol = (protocol) => {
+  const implementation =
+    protocolImplMap[protocol.implementation] || protocol.implementation;
+  const name = patternMap[protocol.name] || protocol.name;
+
+  return {
+    _name: "protocol",
+    _attrs: {
+      implementation,
+      name,
+    },
+  };
+};
+
+export const createProtocols = (config) => ({
   _name: "protocols",
-  _content: [],
+  _content: config.protocols.map(createProtocol),
 });
 
 export interface IListener {
@@ -115,7 +163,7 @@ export const createListener = (listener: IListener) => ({
   _content: listener.commands && createCommands(listener),
 });
 
-export const createListeners = ({ listeners }: { listeners: IListener[] }) => ({
+export const createListeners = (listeners: IListener[]) => ({
   _name: "listeners",
   _content: listeners.map(createListener),
 });
@@ -152,9 +200,17 @@ export const createSecurity = ({ users, resources }: any) => ({
   _content: [createUsers(users), createResources(resources)],
 });
 
-export const createNetwork = (config) => ({
+interface INetwork {
+  protocols?: IProtocol[];
+  listeners?: IListener[];
+}
+
+export const createNetwork = ({ protocols, listeners }: INetwork) => ({
   _name: "network",
-  _content: [createListeners(config.listeners)],
+  _content: [
+    protocols && createProtocols(protocols),
+    listeners && createListeners(listeners),
+  ],
 });
 
 export const isAfterFirstTime = (isAfterFirstTime) => ({
