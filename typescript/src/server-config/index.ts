@@ -174,6 +174,19 @@ export interface IUser {
   password: string;
 }
 
+export interface ISecurityUser {
+  resources: string;
+  username: string;
+}
+
+export const createSecurityUser = ({ resources, username }: ISecurityUser) => ({
+  _name: "user",
+  _attrs: {
+    resources,
+    username,
+  },
+});
+
 export const createUser = ({ resources, name, password }: IUser) => ({
   _name: "user",
   _attrs: {
@@ -190,6 +203,11 @@ export const createUsers = (users: IUser[]) => ({
   _content: users.map(createUser),
 });
 
+export const createSecurityUsers = (users: ISecurityUser[]) => ({
+  _name: "users",
+  _content: users.map(createSecurityUser),
+});
+
 export const createResources = (resources: any[]) => ({
   _name: "resources",
   _content: resources && resources.map(createResource),
@@ -197,7 +215,7 @@ export const createResources = (resources: any[]) => ({
 
 export const createSecurity = ({ users, resources }: any) => ({
   _name: "security",
-  _content: [createUsers(users), createResources(resources)],
+  _content: [createSecurityUsers(users), createResources(resources)],
 });
 
 interface INetwork {
