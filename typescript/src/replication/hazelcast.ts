@@ -1,3 +1,4 @@
+import { createParameters } from "../server-config";
 import { createTcpIp } from "./tcp-members";
 
 interface IProps {
@@ -107,5 +108,44 @@ export const createHazelcast = (config) => ({
     createProperties(config),
     createNetwork(config.network),
     createExecutorService(config.executor),
+  ],
+});
+
+export const createAccessKey = (accessKey) => ({
+  _name: "access-key",
+  _content: accessKey,
+});
+
+export const createSecretKey = (secretKey) => ({
+  _name: "secret-key",
+  _content: secretKey,
+});
+
+export const createRegion = (region) => ({
+  _name: "region",
+  _content: region,
+});
+
+export const createSecurityGroupName = (name) => ({
+  _name: "security-group-name",
+  _content: name,
+});
+
+export const createAws = ({
+  enabled,
+  accessKey,
+  secretKey,
+  region,
+  securityGroupName,
+}) => ({
+  _name: "aws",
+  _attrs: {
+    enabled,
+  },
+  _content: [
+    accessKey && createAccessKey(accessKey),
+    secretKey && createSecretKey(secretKey),
+    region && createRegion(region),
+    securityGroupName && createSecurityGroupName(securityGroupName),
   ],
 });

@@ -129,6 +129,8 @@ ports:
 
 ## EC2 instance
 
+See also [OrientDB dockerized for ECS](https://github.com/mohamnag/ecs-orientdb)
+
 An EC2 instance can be configured for OrientDb as follows, using User Data to customize and control bootstrapping behaviour.
 
 A sample EC2 CDK stack can be found in `src/orientdb-ec2-stack.ts` (untested)
@@ -220,9 +222,19 @@ Would generate:
 
 Xml templating for hazelcast configuration is included in the `src/replication` folder.
 
+Hazelcast resources:
+
+- [How to set up Hazelcast on AWS ECS](https://hazelcast.com/blog/how-to-set-up-hazelcast-imdg-on-aws-ecs/)
+- [DB replication on AWS](https://github.com/orientechnologies/orientdb/issues/5977)
+- [Creating Distributed Database System in AWS](https://github.com/orientechnologies/orientdb/issues/4943)
+
 See the section [Configuring replication](#Configuring-replication) below for more details.
 
 You can also use named fargate services as micro services to execute business logic, such as handling API calls from a REST or GraphQL API and execute commands on the OrientDB cluster.
+
+### OrientDB backup on S3
+
+See [orientdb-backup-s3](https://github.com/33Fraise33/orientdb-backup-s3)
 
 #### VPC
 
