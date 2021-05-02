@@ -28,6 +28,7 @@
     "@aws-cdk/aws-lambda": "^1.95.1",
     "@aws-cdk/aws-servicediscovery": "^1.95.1",
     "@aws-cdk/core": "1.91.0",
+    "dotenv": "^8.2.0",
     "jstoxml": "^2.0.5",
     "source-map-support": "^0.5.16"
   }

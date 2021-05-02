@@ -1,9 +1,33 @@
-import { createParameters } from "../server-config";
-import { createTcpIp } from "./tcp-members";
-
 interface IProps {
   [key: string]: string;
 }
+
+export const createMember = (member: string) => ({
+  _name: "member",
+  _content: member,
+});
+
+export const createMembers = (members: string[]) => ({
+  _name: "members",
+  _content: members.map((key) => createMember(members[key])),
+});
+
+export const createTcpIp = ({
+  members,
+  enabled,
+}: {
+  members?: string[];
+  enabled?: boolean;
+} = {}) => {
+  const $members = members && createMembers(members);
+  return {
+    _name: "tcp-ip",
+    _attrs: {
+      enabled: enabled === undefined ? "true" : enabled,
+    },
+    _content: $members,
+  };
+};
 
 export const createGroup = ({
   username,
