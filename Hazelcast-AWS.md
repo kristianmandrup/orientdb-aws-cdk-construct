@@ -1,5 +1,8 @@
 # Hazelcast on AWS
 
+See [How to set up Hazelcast on AWS ECS](https://hazelcast.com/blog/how-to-set-up-hazelcast-imdg-on-aws-ecs/)
+and [video walk-through](https://www.youtube.com/watch?v=yQnrts0hfi4)
+
 This guide demonstrates the steps and configuration needed to configure a docker image with Hazelcast on AWS.
 
 Instead of multicast configure use of AWS for discovery in `hazelcast.yaml` (or `hazelcast.xml`)
