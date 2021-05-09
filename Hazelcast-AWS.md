@@ -42,7 +42,7 @@ Create IAM Policy: `hazelcast-policy` with the policy
 Add policy `hazelcast-policy` to new IAM role `hazelcast-ecs-role`
 
 Create New Fargate Task Definition such as `hazelcast-definition`
-Attach task role to newly created role `hazelcast-ecs-role`
+Attach task definition to newly created role `hazelcast-ecs-role`
 Select `Task execution role` and set to `ecsTaskExecutionRole`
 
 Add the ECS container
@@ -66,7 +66,146 @@ If you check the logs, it should indicate that it connects each member through h
 
 ## Hazelcast on AWS with cdk
 
-A sample CDK for hazelcast on AWS with fargate and OrientDB image can be found in `orientdb-fargate-stack`
+- ECS
+  - DescribeTasks
+  - ListTasks
+  - Applies to all resources (\*)
+- EC2
+  - DescribeNetworkInterfaces
+
+```ts
+const ecsPolicy = new iam.PolicyStatement({
+  resources: ["arn:aws:*"],
+  actions: ["ecs:DescribeTasks", "ecs:ListTasks"],
+  // 👇 Default for `effect` is ALLOW
+  effect: iam.Effect.ALLOW,
+});
+
+const ec2Policy = new iam.PolicyStatement({
+  resources: ["arn:aws:*"],
+  actions: ["ec2:DescribeNetworkInterfaces"],
+  // 👇 Default for `effect` is ALLOW
+  effect: iam.Effect.ALLOW,
+});
+
+// 👇 Create a Policy Document (Collection of Policy Statements)
+const describeAndListTasks = new iam.PolicyDocument({
+  statements: [ecsPolicy, ec2Policy],
+});
+```
+
+```ts
+// 👇 Create role, to which we'll attach our Policies
+const ecsTaskRole = new iam.Role(this, "hazelcast-ecs-role", {
+  assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+  description: "Hazelcast ECS role",
+  inlinePolicies: {
+    // 👇 attach the Policy Document as inline policies
+    DescribeAndListTasks: describeAndListTasks,
+  },
+});
+```
+
+Alternatively using `addToPolicy`
+
+```ts
+ecsTaskRole.addToPolicy(ecsPolicy);
+ecsTaskRole.addToPolicy(ec2Policy);
+```
+
+See `typescripts/src/roles.ts` for how to configure task and execution roles and policies for ECS.
+
+In python:
+
+```py
+# ECS Execution Role - Grants ECS agent to call AWS APIs
+ecs_execution_role = iam.Role(
+    self, 'ECSExecutionRole',
+    assumed_by=iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+    role_name="ecs-cdk-execution-role"
+)
+
+# Setup Role Permissions
+ecs_execution_role.add_to_policy(
+    iam.PolicyStatement(
+        effect=iam.Effect.ALLOW,
+        actions=[
+            'elasticloadbalancing:DeregisterInstancesFromLoadBalancer',
+            'elasticloadbalancing:DeregisterTargets',
+            'elasticloadbalancing:Describe*',
+            'elasticloadbalancing:RegisterInstancesWithLoadBalancer',
+            'elasticloadbalancing:RegisterTargets',
+            'ec2:Describe*',
+            'ec2:AuthorizeSecurityGroupIngress',
+            'sts:AssumeRole'
+        ],
+        resources=["*"]
+    )
+)
+
+# ECS Task Role - Grants containers in task permission to AWS APIs
+ecs_task_role = iam.Role(
+    self, 'ECSTaskRole',
+    assumed_by=iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+    role_name="ecs-cdk-task-role"
+)
+
+# Setup Role Permissions
+ecs_task_role.add_to_policy(
+    iam.PolicyStatement(
+        effect=iam.Effect.ALLOW,
+        actions=[
+            'ecr:GetAuthorizationToken',
+            'ecr:BatchCheckLayerAvailability',
+            'ecr:GetDownloadUrlForLayer',
+            'ecr:BatchGetImage',
+            'logs:CreateLogStream',
+            'logs:PutLogEvents'
+        ],
+        resources=["*"]
+    )
+)
+
+# Setup Fargate Task Definition
+fargate_taskdef = ecs.FargateTaskDefinition(
+    self,'ECSFargateTask',
+    memory_limit_mib=512,
+    cpu=256,
+    execution_role=ecs_execution_role,
+    task_role=ecs_task_role,
+    family="ecs-cdk-taskdef"
+)
+
+# Add Container Info to Task
+ecs_container = fargate_taskdef.add_container(
+    "FargateImage",
+    image=ecs.ContainerImage.from_registry("amazon/amazon-ecs-sample"),
+    logging=ecs.LogDriver.aws_logs(
+        stream_prefix="ecs-fargate-logs",
+        log_group=log_group
+    )
+)
+
+# Setup Port Mappings
+ecs_container.add_port_mappings(
+    ecs.PortMapping(
+        container_port=80,
+        host_port=80,
+        protocol=ecs.Protocol.TCP
+    )
+)
+
+# Setup Fargate Service
+fargate_service = ecs.FargateService(
+    self,"FargateService",
+    task_definition=fargate_taskdef,
+    cluster=ecs_cluster,
+    desired_count=1,
+    service_name="ecs-cdk-service"
+)
+```
+
+A sample (but incomplete) CDK for hazelcast on AWS with fargate and OrientDB image can be found in `orientdb-fargate-stack`
 
 It takes the following properties:
 
