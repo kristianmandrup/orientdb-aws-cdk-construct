@@ -222,6 +222,22 @@ Would generate:
 
 Xml templating for hazelcast configuration is included in the `src/replication` folder.
 
+IMPORTANT: It turns out that hazelcast has direct support for AWS via an `aws` settings scope as described in [./Hazelcast-AWS.md]
+(Hazelcast on AWS)
+
+```yaml
+hazelcast:
+  network:
+    join:
+      multicast:
+        enabled: false
+      aws:
+        enabled: true
+    interfaces:
+      interfaces:
+        - 10.0.*.*
+```
+
 Hazelcast resources:
 
 - [How to set up Hazelcast on AWS ECS](https://hazelcast.com/blog/how-to-set-up-hazelcast-imdg-on-aws-ecs/)

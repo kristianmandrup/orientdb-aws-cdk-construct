@@ -63,3 +63,42 @@ Create new Security group for the service: `hazelcast-sg`
 Set allow TCP over `5701` and HTTP or TCP over port `8080`
 Start the service.
 If you check the logs, it should indicate that it connects each member through hazelcast.
+
+## Hazelcast on AWS with cdk
+
+A sample CDK for hazelcast on AWS with fargate and OrientDB image can be found in `orientdb-fargate-stack`
+
+It takes the following properties:
+
+- `name` such as `orient`
+- `cloudNamespace` such as `orientdb.com` (if not set cluster will not use AWS Cloud Map)
+- `clusterName` such as `orientCluster`
+- `vpcName` such as `orientVpc`
+- `vpc` to reuse existing vpc
+- `desiredCount` (defaults to `3` instances)
+- `taskDefName` such as `OrientTaskDef`
+- `cpu` cpu size (default to `512` Mb)
+- `memoryLimit` memory limit in Mb (defaults to `1024` Mb)
+- `containerName` such as `OrientContainer`
+- `logGroupName` such as `OrientLogGroup`
+- `containerRegistryImageName` container image name in registry to be used (defaults to `orientdb:3.1.11-tp3`)
+- `streamPrefix` defaults to `OrientDb`
+- `image`
+- `securityGroupName`
+- `serviceName` such as `OrientService`
+- `cloudMapOptionsName` defaults to `OrientDb`
+- `availabilityZones` such as `['eu-west-1]`
+
+The following instance variables are exposed by the stack (read only)
+
+- `clusterName`
+- `cloudNamespace`
+- `vpcName`
+- `taskDefName`
+- `containerName`
+- `logGroupName`
+- `containerRegistryImageName`
+- `desiredCount`
+- `cpu`
+- `memoryLimit`
+- `ecsService`
