@@ -1,14 +1,16 @@
-import { Construct, RemovalPolicy, Stack } from "@aws-cdk/core";
+import * as cdk from "@aws-cdk/core";
 import * as ecs from "@aws-cdk/aws-ecs";
 import * as ec2 from "@aws-cdk/aws-ec2";
-import { LogDriver } from "@aws-cdk/aws-ecs";
-import { Peer, Port, SecurityGroup, SubnetType } from "@aws-cdk/aws-ec2";
 import * as logs from "@aws-cdk/aws-logs";
+
+const { RemovalPolicy } = cdk;
+const { LogDriver } = ecs;
+const { Peer, Port, SecurityGroup, SubnetType } = ec2;
 
 /**
  * This stack contains an ECS cluster/service with OrientDb inside
  */
-export class HazelcastAWS extends Stack {
+export class HazelcastAWS extends cdk.Stack {
   readonly clusterName: string;
   readonly cloudNamespace: string;
   readonly vpcName: string;
@@ -24,10 +26,10 @@ export class HazelcastAWS extends Stack {
   readonly ecsService: ecs.FargateService;
   readonly cluster: ecs.Cluster;
   readonly taskDefinition: ecs.TaskDefinition;
-  readonly securityGroup: SecurityGroup;
+  readonly securityGroup: ec2.SecurityGroup;
   readonly logGroup: logs.LogGroup;
 
-  constructor(scope: Construct, id: string, props: any = {}) {
+  constructor(scope: cdk.Construct, id: string, props: any = {}) {
     super(scope, id, props);
     const name = props.name || "OrientDB";
     const clusterName = props.clusterName || `${name}Cluster`;
