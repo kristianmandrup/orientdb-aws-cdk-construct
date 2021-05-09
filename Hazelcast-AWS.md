@@ -221,8 +221,12 @@ It takes the following properties:
 - `containerName` such as `OrientContainer`
 - `logGroupName` such as `OrientLogGroup`
 - `containerRegistryImageName` container image name in registry to be used (defaults to `orientdb:3.1.11-tp3`)
+- `ecrImage` such as `my-orient-docker`
+- `assetImagePath` such as `./images/orient-docker`
 - `streamPrefix` defaults to `OrientDb`
 - `image`
+- `ecsTaskRole` the ECS task role instance to use for the task definition
+- `ecsExecutionRole` the ECS execution role instance to use for the task definition
 - `securityGroupName`
 - `serviceName` such as `OrientService`
 - `cloudMapOptionsName` defaults to `OrientDb`
@@ -240,4 +244,10 @@ The following instance variables are exposed by the stack (read only)
 - `desiredCount`
 - `cpu`
 - `memoryLimit`
-- `ecsService`
+- `ecsService` an `ecs.FargateService` instance
+- `cluster` a `ecs.Cluster` instance
+- `taskDefinition` an `ecs.TaskDefinition`
+- `logGroup` a `logs.LogGroup` instance
+- `SecurityGroup` a `ec2.SecurityGroup` instance
+
+Note that you can use [addToExecutionRolePolicy](https://docs.aws.amazon.com/cdk/api/latest/docs/@aws-cdk_aws-ecs.FargateTaskDefinition.html#addwbrtowbrexecutionwbrrolewbrpolicystatement) and [addToTaskRolePolicy](https://docs.aws.amazon.com/cdk/api/latest/docs/@aws-cdk_aws-ecs.FargateTaskDefinition.html#addwbrtowbrtaskwbrrolewbrpolicystatement) on the `FargateTaskDefinition` to configure policies for Hazelcast.

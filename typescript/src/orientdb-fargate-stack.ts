@@ -22,6 +22,10 @@ export class HazelcastAWS extends Stack {
   readonly memoryLimit: number;
 
   readonly ecsService: ecs.FargateService;
+  readonly cluster: ecs.Cluster;
+  readonly taskDefinition: ecs.TaskDefinition;
+  readonly securityGroup: SecurityGroup;
+  readonly logGroup: logs.LogGroup;
 
   constructor(scope: Construct, id: string, props: any = {}) {
     super(scope, id, props);
@@ -62,13 +66,29 @@ export class HazelcastAWS extends Stack {
     const cluster =
       props.cluster || new ecs.Cluster(this, clusterName, clusterConfig);
 
+    this.cluster = cluster;
+
+    const taskDefConfig: any = {
+      cpu,
+      memoryLimitMiB: memoryLimit,
+    };
+
+    const ecsTaskRole = props.ecsTaskRole;
+    const ecsExecRole = props.ecsExecRole;
+
+    if (ecsTaskRole) {
+      taskDefConfig.ecsTaskRole = ecsTaskRole;
+    }
+    if (ecsExecRole) {
+      taskDefConfig.ecsExecRole = ecsExecRole;
+    }
+
     // had problem when reducing the memory to less than 2 Gig
     const taskDefinition =
       props.taskDefinition ||
-      new ecs.FargateTaskDefinition(this, taskDefName, {
-        cpu,
-        memoryLimitMiB: memoryLimit,
-      });
+      new ecs.FargateTaskDefinition(this, taskDefName, taskDefConfig);
+
+    this.taskDefinition = taskDefinition;
 
     // i hate CDK auto created logGroupNames, so i define my own LogGroup
     // also i hate not having Renetation days set to minimal
@@ -80,10 +100,21 @@ export class HazelcastAWS extends Stack {
         removalPolicy: RemovalPolicy.DESTROY,
       });
 
+    this.logGroup = logGroup;
+
     // Default: OrientDb 3.1.11 with Apache Tinkerpop 3
-    const image =
-      props.image ||
+    const registryImage =
+      containerRegistryImageName &&
       ecs.ContainerImage.fromRegistry(containerRegistryImageName);
+
+    const ecrImage =
+      props.ecrImage && ecs.ContainerImage.fromEcrRepository(props.ecrImage);
+
+    const assetImage =
+      props.assetImagePath &&
+      ecs.ContainerImage.fromAsset(props.assetImagePath);
+
+    const image = props.image || assetImage || ecrImage || registryImage;
 
     taskDefinition.addContainer(containerName, {
       image,
@@ -104,26 +135,28 @@ export class HazelcastAWS extends Stack {
     const securityGroupName = props.securityGroupName || `${name}SecGroup`;
 
     // we define our security group here and allow incoming ICMP (i am old school) and 3301 for OrientDb
-    const OrientDbSecGroup = new SecurityGroup(this, securityGroupName, {
+    const securityGroup = new SecurityGroup(this, securityGroupName, {
       vpc,
       securityGroupName,
       description: "OrientDb Security Group",
       allowAllOutbound: true, // Can be set to false
     });
 
-    OrientDbSecGroup.addIngressRule(
+    this.securityGroup = securityGroup;
+
+    securityGroup.addIngressRule(
       Peer.anyIpv4(),
       Port.tcp(5701),
       "allow access to port 5701 - hazelcast"
     );
 
-    OrientDbSecGroup.addIngressRule(
+    securityGroup.addIngressRule(
       Peer.anyIpv4(),
       Port.tcp(2424),
       "allow access to port 2424 - orientdb"
     );
 
-    OrientDbSecGroup.addIngressRule(
+    securityGroup.addIngressRule(
       Peer.anyIpv4(),
       Port.icmpPing(),
       "Allow ICMP Ping"
@@ -138,7 +171,7 @@ export class HazelcastAWS extends Stack {
       cluster,
       desiredCount,
       taskDefinition,
-      securityGroups: [OrientDbSecGroup],
+      securityGroups: [securityGroup],
       serviceName,
       cloudMapOptions: {
         name: cloudMapOptionsName,
