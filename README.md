@@ -159,6 +159,10 @@ A sample Fargate CDK stack can be found in `src/orientdb-fargate-stack.ts` (unte
 
 See [http-api-aws-fargate-cdk](https://github.com/aws-samples/http-api-aws-fargate-cdk) sample setup
 
+See also [streamlit-cdk-fargate](https://github.com/tzaffi/streamlit-cdk-fargate) for an example using a CDK Fargate pattern with docker-compose.
+
+An example using this approach can be found in `python/py_constructs/pattern`
+
 AWS Cloud Map allows us to register any application resources, such as microservices, and other cloud resources, with custom names.
 
 [What Is AWS Cloud Map?](https://docs.aws.amazon.com/cloud-map/latest/dg/what-is-cloud-map.html)
