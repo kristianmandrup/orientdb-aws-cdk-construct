@@ -11,53 +11,61 @@ const { Peer, Port, SecurityGroup, SubnetType } = ec2;
  * This stack contains an ECS cluster/service with OrientDb inside
  */
 export class HazelcastAWS extends cdk.Stack {
+  name: string;
   readonly clusterName: string;
-  readonly cloudNamespace: string;
-  readonly vpcName: string;
-  readonly taskDefName: string;
-  readonly containerName: string;
-  readonly logGroupName: string;
-  readonly containerRegistryImageName: string;
+  cloudNamespace: string;
 
-  readonly desiredCount: number;
-  readonly cpu: number;
-  readonly memoryLimit: number;
+  // readonly vpcName: string;
+  // readonly taskDefName: string;
+  // readonly containerName: string;
+  // readonly logGroupName: string;
+  // readonly containerRegistryImageName: string;
+  // readonly desiredCount: number;
+  // readonly cpu: number;
+  // readonly memoryLimit: number;
 
-  readonly ecsService: ecs.FargateService;
-  readonly cluster: ecs.Cluster;
-  readonly taskDefinition: ecs.TaskDefinition;
-  readonly securityGroup: ec2.SecurityGroup;
-  readonly logGroup: logs.LogGroup;
+  vpc: ec2.Vpc;
+  image: ecs.ContainerImage;
+  ecsService: ecs.FargateService;
+  cluster: ecs.Cluster;
+  taskDefinition: ecs.TaskDefinition;
+  securityGroup: ec2.SecurityGroup;
+  logGroup: logs.LogGroup;
 
   constructor(scope: cdk.Construct, id: string, props: any = {}) {
     super(scope, id, props);
-    const name = props.name || "OrientDB";
-    const clusterName = props.clusterName || `${name}Cluster`;
-    const cloudNamespace = props.cloudNamespace;
-    const vpcName = props.vpcName || `${name}VPC`;
-    const vpc = props.vpc || new ec2.Vpc(this, vpcName);
-    const desiredCount = props.desiredCount || 3;
-    const taskDefName = props.taskDefName || `${name}TaskDef`;
-    const cpu = props.cpu || 512;
-    const memoryLimit = props.memoryLimit || 1024;
-    const containerName = props.containerName || `${name}Container`;
-    const logGroupName = props.logGroupName || `${name}LogGroup`;
-    const containerRegistryImageName =
-      props.containerRegistryImageName || "orientdb:3.1.11-tp3";
-    const streamPrefix = props.streamPrefix || "OrientDb";
+    this.setName(props);
+    this.setOrCreateVpc(props);
+    this.createCluster(props);
+    this.createTaskDefinition(props);
+    this.createSecurityGroup(props);
+    this.createLogGroup(props);
+    this.createService(props);
+  }
 
-    this.vpcName = vpcName;
-    this.clusterName = clusterName;
+  setName(props) {
+    this.name = props.name || "OrientDB";
+  }
+
+  setOrCreateVpc(props) {
+    const vpcName = props.vpcName || `${this.name}VPC`;
+    const vpc = props.vpc || new ec2.Vpc(this, vpcName);
+    this.vpc = vpc;
+  }
+
+  createCluster(props) {
+    const vpc = this.vpc;
+    const clusterConfig: any = {
+      vpc,
+      clusterName: this.clusterName,
+    };
+    const cloudNamespace = props.cloudNamespace;
+    const clusterName = props.clusterName || `${this.name}Cluster`;
     this.cloudNamespace = cloudNamespace;
 
     const defaultCloudMapNamespace = this.cloudNamespace && {
       name: this.cloudNamespace,
       vpc,
-    };
-
-    const clusterConfig: any = {
-      vpc,
-      clusterName: this.clusterName,
     };
 
     if (defaultCloudMapNamespace) {
@@ -69,6 +77,36 @@ export class HazelcastAWS extends cdk.Stack {
       props.cluster || new ecs.Cluster(this, clusterName, clusterConfig);
 
     this.cluster = cluster;
+  }
+
+  get defaultImageName() {
+    return "orientdb:3.1.11-tp3";
+  }
+
+  createImage(props) {
+    const containerRegistryImageName =
+      props.containerRegistryImageName || this.defaultImageName;
+
+    // Default: OrientDb 3.1.11 with Apache Tinkerpop 3
+    const registryImage =
+      containerRegistryImageName &&
+      ecs.ContainerImage.fromRegistry(containerRegistryImageName);
+
+    const ecrImage =
+      props.ecrImage && ecs.ContainerImage.fromEcrRepository(props.ecrImage);
+
+    const assetImage =
+      props.assetImagePath &&
+      ecs.ContainerImage.fromAsset(props.assetImagePath);
+
+    const image = props.image || assetImage || ecrImage || registryImage;
+    this.image = image;
+  }
+
+  createTaskDefinition(props) {
+    const taskDefName = props.taskDefName || `${this.name}TaskDef`;
+    const cpu = props.cpu || 512;
+    const memoryLimit = props.memoryLimit || 1024;
 
     const taskDefConfig: any = {
       cpu,
@@ -84,44 +122,19 @@ export class HazelcastAWS extends cdk.Stack {
     if (ecsExecRole) {
       taskDefConfig.ecsExecRole = ecsExecRole;
     }
+    const streamPrefix = props.streamPrefix || "OrientDb";
 
     // had problem when reducing the memory to less than 2 Gig
     const taskDefinition =
       props.taskDefinition ||
       new ecs.FargateTaskDefinition(this, taskDefName, taskDefConfig);
 
-    this.taskDefinition = taskDefinition;
-
-    // i hate CDK auto created logGroupNames, so i define my own LogGroup
-    // also i hate not having Renetation days set to minimal
-    const logGroup =
-      props.logGroup ||
-      new logs.LogGroup(this, logGroupName, {
-        retention: logs.RetentionDays.FIVE_DAYS,
-        logGroupName,
-        removalPolicy: RemovalPolicy.DESTROY,
-      });
-
-    this.logGroup = logGroup;
-
-    // Default: OrientDb 3.1.11 with Apache Tinkerpop 3
-    const registryImage =
-      containerRegistryImageName &&
-      ecs.ContainerImage.fromRegistry(containerRegistryImageName);
-
-    const ecrImage =
-      props.ecrImage && ecs.ContainerImage.fromEcrRepository(props.ecrImage);
-
-    const assetImage =
-      props.assetImagePath &&
-      ecs.ContainerImage.fromAsset(props.assetImagePath);
-
-    const image = props.image || assetImage || ecrImage || registryImage;
+    const containerName = props.containerName || `${this.name}Container`;
 
     taskDefinition.addContainer(containerName, {
-      image,
+      image: this.image,
       logging: LogDriver.awsLogs({
-        logGroup,
+        logGroup: this.logGroup,
         streamPrefix,
       }),
     });
@@ -134,11 +147,15 @@ export class HazelcastAWS extends cdk.Stack {
         containerPort: 2424, // orientdb
       });
 
-    const securityGroupName = props.securityGroupName || `${name}SecGroup`;
+    this.taskDefinition = taskDefinition;
+  }
+
+  createSecurityGroup(props) {
+    const securityGroupName = props.securityGroupName || `${this.name}SecGroup`;
 
     // we define our security group here and allow incoming ICMP (i am old school) and 3301 for OrientDb
     const securityGroup = new SecurityGroup(this, securityGroupName, {
-      vpc,
+      vpc: this.vpc,
       securityGroupName,
       description: "OrientDb Security Group",
       allowAllOutbound: true, // Can be set to false
@@ -163,17 +180,35 @@ export class HazelcastAWS extends cdk.Stack {
       Port.icmpPing(),
       "Allow ICMP Ping"
     );
+  }
 
-    const serviceName = props.serviceName || `${name}Service`;
+  createLogGroup(props) {
+    // i hate CDK auto created logGroupNames, so i define my own LogGroup
+    // also i hate not having Renetation days set to minimal
+    const logGroupName = props.logGroupName || `${this.name}LogGroup`;
+    const logGroup =
+      props.logGroup ||
+      new logs.LogGroup(this, logGroupName, {
+        retention: logs.RetentionDays.FIVE_DAYS,
+        logGroupName,
+        removalPolicy: RemovalPolicy.DESTROY,
+      });
+
+    this.logGroup = logGroup;
+  }
+
+  createService(props) {
+    const serviceName = props.serviceName || `${this.name}Service`;
     const cloudMapOptionsName = props.cloudMapOptionsName || "OrientDb";
     const availabilityZones = props.availabilityZones;
+    const desiredCount = props.desiredCount || 3;
 
     // Instantiate an Amazon ECS Service
     const ecsService = new ecs.FargateService(this, serviceName, {
-      cluster,
+      cluster: this.cluster,
       desiredCount,
-      taskDefinition,
-      securityGroups: [securityGroup],
+      taskDefinition: this.taskDefinition,
+      securityGroups: [this.securityGroup],
       serviceName,
       cloudMapOptions: {
         name: cloudMapOptionsName,
