@@ -251,12 +251,13 @@ export class HazelcastAWS extends cdk.Stack {
   }
 
   // see also roles.ts
-  buildTaskRole(execution: boolean): iam.Role | undefined {
+  buildTaskRole(execution: boolean): iam.Role {
     const taskRole = new iam.Role(this, "ecsTaskExecutionRole", {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
     });
 
-    if (!execution) return;
+    if (!execution) return taskRole;
+
     taskRole.addManagedPolicy(
       iam.ManagedPolicy.fromAwsManagedPolicyName(
         "service-role/AmazonECSTaskExecutionRolePolicy"

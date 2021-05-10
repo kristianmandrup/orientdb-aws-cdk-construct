@@ -1,9 +1,21 @@
 // Setup Role Permissions
 import * as iam from "@aws-cdk/aws-iam";
+import { Construct } from "@aws-cdk/core";
 
 // # ECS Execution Role - Grants ECS agent to call AWS APIs
 export class ExecutionRole {
-  constructor(context, props: any) {
+  context: Construct;
+
+  get ecsActions(): string[] {
+    return ["ecs:DescribeTasks", "ecs:ListTasks"];
+  }
+
+  get ec2Actions(): string[] {
+    return ["ec2:DescribeNetworkInterfaces"];
+  }
+
+  constructor(context: Construct, props: any) {
+    this.context = context;
     const servicePrincipal =
       props.principal || new iam.ServicePrincipal("ecs-tasks.amazonaws.com");
 
@@ -15,16 +27,7 @@ export class ExecutionRole {
       roleName: ecsRoleName,
     });
 
-    const actions = props.actions || [
-      "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
-      "elasticloadbalancing:DeregisterTargets",
-      "elasticloadbalancing:Describe*",
-      "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
-      "elasticloadbalancing:RegisterTargets",
-      "ec2:Describe*",
-      "ec2:AuthorizeSecurityGroupIngress",
-      "sts:AssumeRole",
-    ];
+    const actions = props.actions || ["ec2:DescribeNetworkInterfaces"];
 
     const resources = props.resources || ["*"];
 
@@ -39,9 +42,11 @@ export class ExecutionRole {
 
 // ECS Task Role - Grants containers in task permission to AWS APIs
 export class TaskRole {
+  context: Construct;
   readonly ecsTaskRole: iam.Role;
 
-  constructor(context, props: any) {
+  constructor(context: Construct, props: any) {
+    this.context = context;
     const servicePrincipal =
       props.principal || new iam.ServicePrincipal("ecs-tasks.amazonaws.com");
 
@@ -53,14 +58,7 @@ export class TaskRole {
       roleName: ecsRoleName,
     });
 
-    const actions = props.actions || [
-      "ecr:GetAuthorizationToken",
-      "ecr:BatchCheckLayerAvailability",
-      "ecr:GetDownloadUrlForLayer",
-      "ecr:BatchGetImage",
-      "logs:CreateLogStream",
-      "logs:PutLogEvents",
-    ];
+    const actions = props.actions || [];
 
     const resources = props.resources || ["*"];
 
@@ -73,5 +71,20 @@ export class TaskRole {
     // Setup Role Permissions
     ecsTaskRole.addToPolicy(policy);
     this.ecsTaskRole = ecsTaskRole;
+  }
+
+  buildTaskRole(name: string, execution?: boolean): iam.Role {
+    const taskRole = new iam.Role(this.context, name, {
+      assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+    });
+
+    if (!execution) return taskRole;
+
+    taskRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName(
+        "service-role/AmazonECSTaskExecutionRolePolicy"
+      )
+    );
+    return taskRole;
   }
 }
