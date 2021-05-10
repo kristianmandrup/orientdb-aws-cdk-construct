@@ -19,15 +19,18 @@ export class ExecutionRole {
     const servicePrincipal =
       props.principal || new iam.ServicePrincipal("ecs-tasks.amazonaws.com");
 
-    const ecsExecRoleName = props.ecsTaskRoleName || "ECSExecutionRole";
-    const ecsRoleName = props.ecsRoleName || "ecs-cdk-task-role";
+    const ecsExecRoleName = props.ecsTaskExecRoleName || "ECSExecutionRole";
+    const ecsRoleName = props.ecsExecRoleName || "ecs-cdk-task-role";
 
     const ecsExecRole = new iam.Role(context, ecsExecRoleName, {
       assumedBy: servicePrincipal,
       roleName: ecsRoleName,
     });
 
-    const actions = props.actions || ["ec2:DescribeNetworkInterfaces"];
+    const actions = (props.actions || [])
+      .concat(this.ecsActions)
+      .concat(this.ec2Actions)
+      .unique();
 
     const resources = props.resources || ["*"];
 
