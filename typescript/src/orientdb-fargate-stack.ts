@@ -1,7 +1,9 @@
 import * as cdk from "@aws-cdk/core";
 import * as ecs from "@aws-cdk/aws-ecs";
 import * as ec2 from "@aws-cdk/aws-ec2";
+import * as elbv2 from "@aws-cdk/aws-elasticloadbalancingv2";
 import * as logs from "@aws-cdk/aws-logs";
+import * as iam from "@aws-cdk/aws-iam";
 
 const { RemovalPolicy } = cdk;
 const { LogDriver } = ecs;
@@ -20,6 +22,8 @@ export class HazelcastAWS extends cdk.Stack {
   taskDefinition: any; // ecs.FargateTaskDefinition;
   securityGroup: ec2.SecurityGroup;
   logGroup: logs.LogGroup;
+  elb: elbv2.ApplicationLoadBalancer;
+  httpVpcLink: cdk.CfnResource;
 
   constructor(scope: cdk.Construct, id: string, props: any = {}) {
     super(scope, id, props);
@@ -205,5 +209,69 @@ export class HazelcastAWS extends cdk.Stack {
     });
 
     this.ecsService = ecsService;
+  }
+
+  createLoadBalancer(name) {
+    this.elb = new elbv2.ApplicationLoadBalancer(this, name, {
+      vpc: this.vpc,
+      internetFacing: false,
+    });
+  }
+
+  addApiListener(loadBalancer, name) {
+    loadBalancer.addListener(name, {
+      port: 80,
+      // Default Target Group
+      defaultAction: elbv2.ListenerAction.fixedResponse(200),
+    });
+  }
+
+  addServiceTargetGroup(
+    apiListener,
+    name,
+    targets,
+    path,
+    priority,
+    opts: any = {}
+  ) {
+    const healthCheck = opts.healthCheck || {
+      path: `${path}/health`,
+      interval: cdk.Duration.seconds(30),
+      timeout: cdk.Duration.seconds(3),
+    };
+
+    apiListener.addTargets(name, {
+      port: 80,
+      priority,
+      healthCheck,
+      targets: targets,
+      pathPattern: `${path}*`,
+      ...opts,
+    });
+  }
+
+  // see also roles.ts
+  buildTaskRole(execution: boolean): iam.Role | undefined {
+    const taskRole = new iam.Role(this, "ecsTaskExecutionRole", {
+      assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+    });
+
+    if (!execution) return;
+    taskRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName(
+        "service-role/AmazonECSTaskExecutionRolePolicy"
+      )
+    );
+    return taskRole;
+  }
+
+  createHttpVpcLink(name?: string) {
+    this.httpVpcLink = new cdk.CfnResource(this, name || "HttpVpcLink", {
+      type: "AWS::ApiGatewayV2::VpcLink",
+      properties: {
+        Name: "http-api-vpclink",
+        SubnetIds: this.vpc.privateSubnets.map((m) => m.subnetId),
+      },
+    });
   }
 }

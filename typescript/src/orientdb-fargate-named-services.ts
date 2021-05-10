@@ -73,21 +73,29 @@ export class FargateVpclinkStack extends cdk.Stack {
       "authorServiceSecurityGroup"
     );
 
-    const createService = (name, securityGrp, opts = {}) =>
+    const createService = (name, taskDefinition, securityGroup, opts = {}) =>
       new ecs.FargateService(this, name, {
         cluster: cluster,
-        taskDefinition: bookServiceTaskDefinition,
+        taskDefinition,
         assignPublicIp: false,
         desiredCount: 2,
-        securityGroup: bookServiceSecGrp,
+        securityGroup,
         cloudMapOptions: {
           name,
         },
         ...opts,
       });
 
-    const bookService = createService("bookService", bookServiceSecGrp);
-    const authorService = createService("authorService", authorServiceSecGrp);
+    const bookService = createService(
+      "bookService",
+      bookServiceTaskDefinition,
+      bookServiceSecGrp
+    );
+    const authorService = createService(
+      "authorService",
+      authorServiceTaskDefinition,
+      authorServiceSecGrp
+    );
 
     const createLoadBalancer = (name) =>
       new elbv2.ApplicationLoadBalancer(this, name, {
