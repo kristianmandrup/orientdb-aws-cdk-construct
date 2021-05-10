@@ -12,23 +12,12 @@ const { Peer, Port, SecurityGroup, SubnetType } = ec2;
  */
 export class HazelcastAWS extends cdk.Stack {
   name: string;
-  readonly clusterName: string;
-  cloudNamespace: string;
-
-  // readonly vpcName: string;
-  // readonly taskDefName: string;
-  // readonly containerName: string;
-  // readonly logGroupName: string;
-  // readonly containerRegistryImageName: string;
-  // readonly desiredCount: number;
-  // readonly cpu: number;
-  // readonly memoryLimit: number;
 
   vpc: ec2.Vpc;
   image: ecs.ContainerImage;
   ecsService: ecs.FargateService;
   cluster: ecs.Cluster;
-  taskDefinition: ecs.TaskDefinition;
+  taskDefinition: any; // ecs.FargateTaskDefinition;
   securityGroup: ec2.SecurityGroup;
   logGroup: logs.LogGroup;
 
@@ -37,9 +26,10 @@ export class HazelcastAWS extends cdk.Stack {
     this.setName(props);
     this.setOrCreateVpc(props);
     this.createCluster(props);
+
+    this.createLogGroup(props);
     this.createTaskDefinition(props);
     this.createSecurityGroup(props);
-    this.createLogGroup(props);
     this.createService(props);
   }
 
@@ -55,16 +45,15 @@ export class HazelcastAWS extends cdk.Stack {
 
   createCluster(props) {
     const vpc = this.vpc;
+    const clusterName = props.clusterName || `${this.name}Cluster`;
     const clusterConfig: any = {
       vpc,
-      clusterName: this.clusterName,
+      clusterName,
     };
     const cloudNamespace = props.cloudNamespace;
-    const clusterName = props.clusterName || `${this.name}Cluster`;
-    this.cloudNamespace = cloudNamespace;
 
-    const defaultCloudMapNamespace = this.cloudNamespace && {
-      name: this.cloudNamespace,
+    const defaultCloudMapNamespace = cloudNamespace && {
+      name: cloudNamespace,
       vpc,
     };
 
@@ -139,14 +128,6 @@ export class HazelcastAWS extends cdk.Stack {
       }),
     });
 
-    taskDefinition
-      .addPortMappings({
-        containerPort: 5701, // hazelcast
-      })
-      .addPortMappings({
-        containerPort: 2424, // orientdb
-      });
-
     this.taskDefinition = taskDefinition;
   }
 
@@ -162,7 +143,11 @@ export class HazelcastAWS extends cdk.Stack {
     });
 
     this.securityGroup = securityGroup;
+    this.addIngressRules(props);
+  }
 
+  addIngressRules(props) {
+    const { securityGroup } = this;
     securityGroup.addIngressRule(
       Peer.anyIpv4(),
       Port.tcp(5701),
@@ -189,9 +174,9 @@ export class HazelcastAWS extends cdk.Stack {
     const logGroup =
       props.logGroup ||
       new logs.LogGroup(this, logGroupName, {
-        retention: logs.RetentionDays.FIVE_DAYS,
+        retention: props.retention || logs.RetentionDays.FIVE_DAYS,
         logGroupName,
-        removalPolicy: RemovalPolicy.DESTROY,
+        removalPolicy: props.removalPolicy || RemovalPolicy.DESTROY,
       });
 
     this.logGroup = logGroup;
@@ -214,7 +199,7 @@ export class HazelcastAWS extends cdk.Stack {
         name: cloudMapOptionsName,
       },
       vpcSubnets: {
-        subnetType: SubnetType.PRIVATE,
+        subnetType: props.subnetType || SubnetType.PRIVATE,
         availabilityZones,
       },
     });
