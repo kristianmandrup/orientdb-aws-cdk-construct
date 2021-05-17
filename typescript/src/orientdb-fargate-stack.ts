@@ -152,17 +152,23 @@ export class HazelcastAWS extends cdk.Stack {
 
   addIngressRules(props) {
     const { securityGroup } = this;
-    securityGroup.addIngressRule(
-      Peer.anyIpv4(),
-      Port.tcp(5701),
-      "allow access to port 5701 - hazelcast"
-    );
-
-    securityGroup.addIngressRule(
-      Peer.anyIpv4(),
-      Port.tcp(2424),
-      "allow access to port 2424 - orientdb"
-    );
+    let { hazelcast, orientdb } = props.ingress || {};
+    if (hazelcast !== false) {
+      hazelcast ||= 5701;
+      securityGroup.addIngressRule(
+        Peer.anyIpv4(),
+        Port.tcp(hazelcast || 5701),
+        `allow access to port ${hazelcast} - hazelcast`
+      );
+    }
+    if (orientdb !== false) {
+      orientdb ||= 5701;
+      securityGroup.addIngressRule(
+        Peer.anyIpv4(),
+        Port.tcp(2424),
+        `allow access to port ${orientdb} - orientdb`
+      );
+    }
 
     securityGroup.addIngressRule(
       Peer.anyIpv4(),
