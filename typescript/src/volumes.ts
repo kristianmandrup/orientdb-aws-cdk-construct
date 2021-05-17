@@ -2,10 +2,17 @@ import * as ecs from "@aws-cdk/aws-ecs";
 import * as ec2 from "@aws-cdk/aws-ec2";
 import * as efs from "@aws-cdk/aws-efs";
 
+export const createVolumeManager = (context, vpc) =>
+  new VolumeManager(context, vpc);
+
 export class VolumeManager {
   context: any;
   vpc: any;
   volumes: any[] = [];
+
+  get names() {
+    return ["config", "databases", "backup", "db"];
+  }
 
   constructor(context, vpc) {
     this.context = context;
@@ -43,12 +50,16 @@ export class VolumeManager {
     return volume;
   }
 
+  createAll(props) {
+    return this.names.map((name) => this.create(name, props));
+  }
+
   addVolume(volume) {
     this.volumes.push(volume);
   }
 
-  addVolumesToTaskDef(taskDef: any) {
-    this.volumes.map((vol) => taskDef.addVolume(vol));
+  addVolumesToTaskDef(taskDef: any, volumes = this.volumes) {
+    volumes.map((vol) => taskDef.addVolume(vol));
     return taskDef;
   }
 }

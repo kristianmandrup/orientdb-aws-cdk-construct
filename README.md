@@ -222,6 +222,14 @@ appTask.addVolume({
 });
 ```
 
+You can use the `VolumeManager` class in `volumes.ts` to create the volumes to be added to your task definition.
+
+```ts
+const vm = createVolumeManager(stack, vpc);
+const volumes = vm.createAll(props);
+vm.addVolumesToTaskDef(taskDef, volumes);
+```
+
 ### AWS Cloud Map
 
 AWS Cloud Map allows us to register any application resources, such as microservices, and other cloud resources, with custom names.
