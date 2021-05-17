@@ -159,9 +159,70 @@ A sample Fargate CDK stack can be found in `src/orientdb-fargate-stack.ts` (unte
 
 See [http-api-aws-fargate-cdk](https://github.com/aws-samples/http-api-aws-fargate-cdk) sample setup
 
-See also [streamlit-cdk-fargate](https://github.com/tzaffi/streamlit-cdk-fargate) for an example using a CDK Fargate pattern with docker-compose.
+See also [streamlit-cdk-fargate](https://github.com/tzaffi/streamlit-cdk-fargate) for an example using a CDK Fargate pattern with `docker-compose`.
 
 An example using this approach can be found in `python/py_constructs/pattern`
+
+#### Docker compose vs Task definition
+
+You can convert a Docker compose file to a task defintion as described [in this blogpost](https://dev.to/espoir/converting-a-docker-compose-file-to-an-aws-task-definition-3poc)
+
+`pip install container-transform`
+
+With the tool installed we can now use it to generate the task definition file.
+
+`cat docker-compose.yml | container-transform -v > .aws/task-definition.json`
+
+For orientdb you would have one or more [volumes](https://docs.aws.amazon.com/AmazonECS/latest/developerguide//task_definition_parameters.html#volumes) as described in [using data volumes](https://docs.aws.amazon.com/AmazonECS/latest/developerguide//using_data_volumes.html)
+
+```python
+file_system = efs.FileSystem(
+  self,
+  "Data",
+  (vpc = properties.vpc),
+  (performance_mode = efs.PerformanceMode.GENERAL_PURPOSE),
+  (throughput_mode = efs.ThroughputMode.BURSTING)
+)
+
+data_volume = ecs.Volume(
+  (name = "Data"),
+  (efs_volume_configuration = ecs.EfsVolumeConfiguration(
+    (file_system_id = file_system.file_system_id)
+  ))
+)
+
+volumes = [
+  data_volume
+]
+
+event_task = ecs.FargateTaskDefinition(
+  self,
+  "OrientDBTask",
+  (volumes = volumes)
+)
+```
+
+In typescript, it would be something like this:
+
+```ts
+const appTask = new ecs.TaskDefinition(this, "TaskDefinition", {
+  family: `${this.stackName}-Service`,
+  cpu: "1024",
+  memoryMiB: "2048",
+  compatibility: ecs.Compatibility.FARGATE,
+});
+
+appTask.addVolume({
+  name: "efs",
+  efsVolumeConfiguration: {
+    fileSystemId: fileSystem.fileSystemId,
+    transitEncryption: "ENABLED",
+    rootDirectory: `/${props.namespace}`,
+  },
+});
+```
+
+### AWS Cloud Map
 
 AWS Cloud Map allows us to register any application resources, such as microservices, and other cloud resources, with custom names.
 
