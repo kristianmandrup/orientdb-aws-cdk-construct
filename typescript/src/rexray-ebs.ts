@@ -71,12 +71,10 @@ export class RexrayEbs {
     };
   }
 
-  addDockerVolume(
+  apiFor(
     container: ContainerDefinition,
     taskDefinition: Ec2TaskDefinition,
-    name: string,
-    containerPath,
-    config: any
+    config
   ) {
     const defaultConfig = {
       autoprovision: true,
@@ -87,24 +85,38 @@ export class RexrayEbs {
         size: "10",
       },
     };
-    config = {
-      ...defaultConfig,
-      ...config,
+
+    const addDockerVolume = (name: string, containerPath) => {
+      config = {
+        ...defaultConfig,
+        ...config,
+      };
+
+      // Add EBS volume, this will also create the volume
+      // Look here to understand all the options:
+      // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/docker-volumes.html
+      taskDefinition.addVolume({
+        name,
+        dockerVolumeConfiguration: config,
+      });
+
+      // Mount the volume to your container
+      container.addMountPoints({
+        sourceVolume: name,
+        containerPath,
+        readOnly: false,
+      });
     };
 
-    // Add EBS volume, this will also create the volume
-    // Look here to understand all the options:
-    // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/docker-volumes.html
-    taskDefinition.addVolume({
-      name,
-      dockerVolumeConfiguration: config,
-    });
+    const addDockerVolumes = (vMap) => {
+      Object.entries(vMap).map(([name, path]) => {
+        addDockerVolume(name, path);
+      });
+    };
 
-    // Mount the volume to your container
-    container.addMountPoints({
-      sourceVolume: name,
-      containerPath,
-      readOnly: false,
-    });
+    return {
+      addDockerVolume,
+      addDockerVolumes,
+    };
   }
 }
