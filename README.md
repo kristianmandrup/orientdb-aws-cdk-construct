@@ -230,6 +230,16 @@ const volumes = vm.createAll(props);
 vm.addVolumesToTaskDef(taskDef, volumes);
 ```
 
+See also [How to attach EBS Docker Volume to AWS ECS using CDK](https://medium.com/aspecto/attach-ebs-docker-volume-to-aws-ecs-using-cdk-931c29e0e1)
+
+• Install rexray/ebs docker plugin using “UserData”.
+• Give your EC2 instance the required roles.
+• Create and attach EBS volume.
+
+REX-Ray is an open source, storage management solution designed to support container runtimes such as Docker and Mesos. REX-Ray enables stateful applications, such as databases, to persist and maintain its data after the life cycle of the container has ended. Built-in high availability enables orchestrators such as Docker Swarm, Kubernetes, and Mesos Frameworks like Marathon to automatically orchestrate storage tasks between hosts in a cluster.
+
+See `rexray-ebs.ts` for a sample implementation using this pattern.
+
 ### AWS Cloud Map
 
 AWS Cloud Map allows us to register any application resources, such as microservices, and other cloud resources, with custom names.
