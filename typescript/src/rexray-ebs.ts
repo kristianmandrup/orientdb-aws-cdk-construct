@@ -8,54 +8,70 @@ import {
 // Based on https://medium.com/aspecto/attach-ebs-docker-volume-to-aws-ecs-using-cdk-931c29e0e1
 export class RexrayEbs {
   stack: any;
-  autoScalingGroup: any;
+  target: any; // autoScalingGroup, ec2 instance etc.
 
-  constructor(stack, autoScalingGroup) {
+  // It should be possible to get the AutoScalingGroup for an EC2 cluster as well
+  // Cluster ec2Cluster = // ...
+  // ec2Cluster.getAutoscalingGroup().addUserData("echo \"$PARAM\"");
+  // for ECS
+  // https://stackoverflow.com/questions/35202993/how-can-i-connect-my-autoscaling-group-to-my-ecs-cluster
+
+  constructor(stack, target) {
     this.stack = stack;
-    this.autoScalingGroup = autoScalingGroup;
+    this.target = target;
   }
 
   // Make sure to set the right EBS_REGION
-  installRexRay() {
-    this.autoScalingGroup.addUserData(
-      "docker plugin install rexray/ebs REXRAY_PREEMPT=true EBS_REGION=eu-west-1 --grant-all-permissions \nstop ecs \nstart ecs"
+  // See: https://bobbyhadz.com/blog/aws-cdk-ec2-userdata-example
+  installRexRay(region: string) {
+    this.addUserData(
+      `docker plugin install rexray/ebs REXRAY_PREEMPT=true EBS_REGION=${region} --grant-all-permissions \nstop ecs \nstart ecs`
     );
   }
 
+  addUserData(userData: string) {
+    this.target.addUserData(userData);
+  }
+
+  get ebsActionsAllowed() {
+    return [
+      "ec2:AttachVolume",
+      "ec2:CreateVolume",
+      "ec2:CreateSnapshot",
+      "ec2:CreateTags",
+      "ec2:DeleteVolume",
+      "ec2:DeleteSnapshot",
+      "ec2:DescribeAvailabilityZones",
+      "ec2:DescribeInstances",
+      "ec2:DescribeVolumes",
+      "ec2:DescribeVolumeAttribute",
+      "ec2:DescribeVolumeStatus",
+      "ec2:DescribeSnapshots",
+      "ec2:CopySnapshot",
+      "ec2:DescribeSnapshotAttribute",
+      "ec2:DetachVolume",
+      "ec2:ModifySnapshotAttribute",
+      "ec2:ModifyVolumeAttribute",
+      "ec2:DescribeTags",
+    ];
+  }
+
   addPolicy() {
+    const actions = this.ebsActionsAllowed;
     // Give our EC2 instance the needed permissions to manage EBS
     const ec2PolicyEbs = new Policy(this.stack, "ec2-policy-create-ebs", {
       policyName: "REXRay-EBS",
       statements: [
         PolicyStatement.fromJson({
           Effect: "Allow",
-          Action: [
-            "ec2:AttachVolume",
-            "ec2:CreateVolume",
-            "ec2:CreateSnapshot",
-            "ec2:CreateTags",
-            "ec2:DeleteVolume",
-            "ec2:DeleteSnapshot",
-            "ec2:DescribeAvailabilityZones",
-            "ec2:DescribeInstances",
-            "ec2:DescribeVolumes",
-            "ec2:DescribeVolumeAttribute",
-            "ec2:DescribeVolumeStatus",
-            "ec2:DescribeSnapshots",
-            "ec2:CopySnapshot",
-            "ec2:DescribeSnapshotAttribute",
-            "ec2:DetachVolume",
-            "ec2:ModifySnapshotAttribute",
-            "ec2:ModifyVolumeAttribute",
-            "ec2:DescribeTags",
-          ],
+          Action: actions,
           Resource: "*",
         }),
       ],
     });
 
-    // Attach policy to our AutoScalingGroup
-    this.autoScalingGroup.role.attachInlinePolicy(ec2PolicyEbs);
+    // Attach policy
+    this.target.role.attachInlinePolicy(ec2PolicyEbs);
   }
 
   // - "./config:/orientdb/config"
