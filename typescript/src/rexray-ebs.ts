@@ -8,7 +8,7 @@ import {
 // Based on https://medium.com/aspecto/attach-ebs-docker-volume-to-aws-ecs-using-cdk-931c29e0e1
 export class RexrayEbs {
   stack: any;
-  target: any; // autoScalingGroup, ec2 instance etc.
+  target: any; // autoScalingGroup, ecs (fargate) or ec2 instance etc.
 
   // It should be possible to get the AutoScalingGroup for an EC2 cluster as well
   // Cluster ec2Cluster = // ...
@@ -18,7 +18,8 @@ export class RexrayEbs {
 
   constructor(stack, target) {
     this.stack = stack;
-    this.target = target;
+    // See: https://docs.aws.amazon.com/cdk/api/latest/docs/@aws-cdk_aws-ecs.ICluster.html
+    this.target = target.autoscalingGroup || target;
   }
 
   // Make sure to set the right EBS_REGION

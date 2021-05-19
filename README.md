@@ -240,6 +240,8 @@ REX-Ray is an open source, storage management solution designed to support conta
 
 See `rexray-ebs.ts` for a sample implementation using this pattern.
 
+See also [autoscaling with ECS](https://dev.to/petrabarus/adding-autoscaling-to-amazon-ecs-with-aws-cdk-building-modern-php-yii2-application-using-aws-126a) for more examples on autoscale configuration.
+
 ### AWS Cloud Map
 
 AWS Cloud Map allows us to register any application resources, such as microservices, and other cloud resources, with custom names.
